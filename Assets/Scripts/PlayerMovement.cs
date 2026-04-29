@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
@@ -7,7 +5,7 @@ public class PlayerMovement : MonoBehaviour
     public CharacterController controller;
  
     public float speed = 12f;
-    public float gravity = -9.81f * 2;
+    public float gravity = -9.80667f * 2;
     public float jumpHeight = 3f;
  
     public Transform groundCheck;
@@ -24,10 +22,7 @@ public class PlayerMovement : MonoBehaviour
         //checking if we hit the ground to reset our falling velocity, otherwise we will fall faster the next time
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
  
-        if (isGrounded && velocity.y < 0)
-        {
-            velocity.y = -2f;
-        }
+        if (isGrounded && velocity.y < 0) velocity.y = -2f;
  
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
