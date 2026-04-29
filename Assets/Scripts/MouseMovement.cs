@@ -24,7 +24,6 @@ public class MouseMovement : MonoBehaviour
     
         //control rotation around x axis (Look up and down)
         xRotation -= mouseY;
-    
         //we clamp the rotation so we cant Over-rotate (like in real life)
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
     
@@ -37,6 +36,6 @@ public class MouseMovement : MonoBehaviour
         transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
 
         // Player left/right
-        playerBody.Rotate(Vector3.up * mouseX);
+        playerBody.localRotation = Quaternion.Euler(0f, yRotation, 0f);
     }
 }
