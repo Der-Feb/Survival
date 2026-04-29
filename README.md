@@ -9,3 +9,5 @@
    - [Fantasy Skybox FREE by Borodar](https://assetstore.unity.com/packages/2d/textures-materials/sky/fantasy-skybox-free-18353)
 
 Once imported, Unity should automatically reconnect the models and materials in the scene.
+
+4. **TextMesh Pro**: For new text ui utility packages
