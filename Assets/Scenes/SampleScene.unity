@@ -171,7 +171,7 @@ Transform:
   m_GameObject: {fileID: 199176590}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 16.82, y: 2.05, z: 14.21}
+  m_LocalPosition: {x: 9.18, y: 2.05, z: 9.56}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -288,13 +288,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.97, z: -1.92}
+  m_LocalRotation: {x: -0, y: 0.35439095, z: -0, w: 0.9350974}
+  m_LocalPosition: {x: -1.43, y: 1.67, z: -2.78}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 199176592}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 41.512, z: 0}
 --- !u!114 &330585547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -353,8 +353,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MouseMovement
   mouseSensitivity: 100
   playerBody: {fileID: 199176592}
-  zOffset: 3.5
-  yOffset: 2.04
+  zOffset: 6.03
+  yOffset: 2.42
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -682,7 +682,7 @@ Transform:
   m_GameObject: {fileID: 1344169749}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.00999999, z: 0}
+  m_LocalPosition: {x: -1.52, y: -0.00999999, z: -2.85}
   m_LocalScale: {x: 1.2, y: 2.05, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -751,5 +751,5 @@ SceneRoots:
   m_Roots:
   - {fileID: 410087041}
   - {fileID: 832575519}
-  - {fileID: 626993977}
   - {fileID: 199176592}
+  - {fileID: 626993977}
