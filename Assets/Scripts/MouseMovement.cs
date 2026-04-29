@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class MouseMovement : MonoBehaviour
@@ -10,15 +8,21 @@ public class MouseMovement : MonoBehaviour
  
     float xRotation = 0f;
     float yRotation = 0f;
+
+    [Header("Perspective settings")]
+    public float zOffset = 0f;
+    public float yOffset = 0f;
  
     void Start()
     {
-      //Locking the cursor to the middle of the screen and making it invisible
-      Cursor.lockState = CursorLockMode.Locked;
+        //Locking the cursor to the middle of the screen and making it invisible
+        Cursor.lockState = CursorLockMode.Locked;
     }
- 
+
     void Update()
     {
+        transform.localPosition = new Vector3(transform.localPosition.x, yOffset, -zOffset);
+
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
     
