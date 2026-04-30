@@ -11,3 +11,5 @@
 Once imported, Unity should automatically reconnect the models and materials in the scene.
 
 4. **TextMesh Pro**: For new text ui utility packages
+   5 **White Rabbit**: Assets for Rabbits (good for URP rendering for materials).
+   - [White Rabbit](https://assetstore.unity.com/packages/3d/characters/animals/white-rabbit-138709)
