@@ -28,7 +28,8 @@ public class SelectionManager : MonoBehaviour
         if(Physics.Raycast(ray, out hit))
         {
             var selectionTransform = hit.transform;
-            InteractableObject interactable = selectionTransform.GetComponent<InteractableObject>();
+            InteractableObject interactable = selectionTransform.GetComponent<InteractableObject>()
+                ?? selectionTransform.GetComponentInParent<InteractableObject>();
 
             if(interactable == null)
             {
