@@ -17,6 +17,8 @@ public class CameraFocus : MonoBehaviour
     private float originalY;
     private float originalZ;
 
+    public bool isFocusing { get; private set; }
+
     void Start()
     {
         // Find the scripts and camera if they aren't assigned
@@ -36,30 +38,23 @@ public class CameraFocus : MonoBehaviour
 
     void Update()
     {
-        bool isKeyPisPressingFocus = Input.GetKey(KeyCode.RightShift);
-        if (isKeyPisPressingFocus)
-        {
-            ApplyFocus(true);
-        }
-        else
-        {
-            ApplyFocus(false);
-        }
+        isFocusing = Input.GetKey(KeyCode.RightShift);
+        ApplyFocus(isFocusing);
     }
 
     void ApplyFocus(bool isFocusing)
     {
-        // 1. Handle UI Toggle
+        // Handle UI Toggle
         if (focusImageUI != null && focusImageUI.activeSelf != isFocusing)
         {
             focusImageUI.SetActive(isFocusing);
         }
 
-        // 2. Handle FOV (Zoom)
+        // Handle FOV (Zoom)
         float targetFOV = isFocusing ? focusedFOV : normalFOV;
         playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, targetFOV, zoomSpeed * Time.deltaTime);
 
-        // 3. Handle Offsets (TPS to FPS transition)
+        // Handle Offsets (TPS to FPS transition)
         if (moveScript != null)
         {
             // If focusing, set offsets to 0. If not, return to original values.
