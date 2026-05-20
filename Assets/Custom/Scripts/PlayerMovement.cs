@@ -7,10 +7,12 @@ public class PlayerMovement : MonoBehaviour
     public Transform groundCheck;
     public LayerMask groundMask;
 
+    public Animator animator;
+
     [Header("Movement Settings")]
     public float maxSpeed = 12f;
     public float acceleration = 10f;
-    public float deacceleration = 15f;
+    public float deacceleration = 120f;
     [HideInInspector] public float currentSpeed = 0f;
 
     [Header("Physics Settings")]
@@ -20,6 +22,8 @@ public class PlayerMovement : MonoBehaviour
 
     private Vector3 verticalVelocity;
     private bool isGrounded;
+
+    private float inputX, inputZ;
 
     void Update()
     {
@@ -32,17 +36,34 @@ public class PlayerMovement : MonoBehaviour
         }
 
         // 2. Horizontal Movement (Using our Accelerate method)
-        Vector3 move = Accelerate();
+        inputX = Input.GetAxisRaw("Horizontal");
+        inputZ = Input.GetAxisRaw("Vertical");
+
+        Vector3 move = Vector3.zero;
+
+        if(Mathf.Abs(inputX) > 0.01f || Mathf.Abs(inputZ) > 0.01f)
+        {
+            move = Accelerate();
+        }
+        else
+        {
+            currentSpeed = 0f;
+            move = Vector3.zero;
+        }
+
+        // send the final processed vector to the controller
         controller.Move(move * Time.deltaTime);
 
-        // 3. Jump Logic
+        // 3. Update Animation States
+        UpdateAnimation();
+
+        // 4. Jump Logic (Keep your existing code here...)
         if (Input.GetButtonDown("Jump") && isGrounded)
         {
-            // Physics formula: v = sqrt(height * -2 * g)
             verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
 
-        // 4. Apply Gravity
+        // 5. Apply Gravity (Keep your existing code here...)
         verticalVelocity.y += gravity * Time.deltaTime;
         controller.Move(verticalVelocity * Time.deltaTime);
     }
@@ -50,11 +71,8 @@ public class PlayerMovement : MonoBehaviour
     // This method calculates the speed build-up and returns the movement vector
     Vector3 Accelerate()
     {
-        float x = Input.GetAxis("Horizontal");
-        float z = Input.GetAxis("Vertical");
-
         // Calculate direction relative to where the player is facing
-        Vector3 inputDir = transform.right * x + transform.forward * z;
+        Vector3 inputDir = transform.right * inputX + transform.forward * inputZ;
 
         // Check if the player is actually trying to move
         if (inputDir.magnitude > 0.1f)
@@ -71,6 +89,8 @@ public class PlayerMovement : MonoBehaviour
         // Clamp speed between 0 and our maximum allowed speed
         currentSpeed = Mathf.Clamp(currentSpeed, 0f, maxSpeed);
 
+        UpdateAnimation();
+
         // Return the direction multiplied by our calculated speed
         // .normalized ensures diagonal movement isn't faster than forward movement
         return inputDir.normalized * currentSpeed;
@@ -80,10 +100,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if(animator == null) return;
 
-        float x = Input.GetAxisRaw("Horizontal");
-        float z = Input.GetAxisRaw("Vertical");
-
-        if((Mathf.Abs(x) > 0.1f || Mathf.Abs(z) > 0.1f) && currentSpeed > 0.1f)
+        if((Mathf.Abs(inputX) > 0.1f || Mathf.Abs(inputZ) > 0.1f) && currentSpeed > 0.1f)
         {
             animator.SetBool("isMoving", true);
             animator.SetBool("isStopped", false);
