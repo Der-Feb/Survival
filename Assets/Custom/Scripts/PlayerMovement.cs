@@ -96,6 +96,8 @@ public class PlayerMovement : MonoBehaviour
         return inputDir.normalized * currentSpeed;
     }
 
+    private float visualAnimSpeed = 1.0f;
+    
     void UpdateAnimation()
     {
         if(animator == null) return;
@@ -105,15 +107,24 @@ public class PlayerMovement : MonoBehaviour
             animator.SetBool("isMoving", true);
             animator.SetBool("isStopped", false);
 
-            float speedPercentage = currentSpeed / maxSpeed;
-            animator.speed = Mathf.Clamp(speedPercentage, 0.2f, 1.5f);
+            /// Calculate where the animation speed WANT to be based on physical speed
+            float targetAnimSpeed = Mathf.Clamp(currentSpeed / maxSpeed, 0.5f, 1.2f);
+
+            /**
+             * SMOOTH STEP: Instead of snapping, smoothly drift toward the target speed over time
+             * 2f controls how fast the animation transitions. Lower = smoother/slower adaptation.
+            */
+            visualAnimSpeed = Mathf.MoveTowards(visualAnimSpeed, targetAnimSpeed, 2f * Time.deltaTime);
+            animator.speed = visualAnimSpeed;
         }
         else
         {
             animator.SetBool("isMoving", false);
             animator.SetBool("isStopped", true);
 
-            animator.speed = 1.0f;
+            // Smoothly return the animation clock back to a normal 1.0 speed when idling
+            visualAnimSpeed = Mathf.MoveTowards(visualAnimSpeed, 1.0f, 4f * Time.deltaTime);
+            animator.speed = visualAnimSpeed;
         }
     }
 }
