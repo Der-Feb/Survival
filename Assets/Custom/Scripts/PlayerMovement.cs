@@ -75,4 +75,28 @@ public class PlayerMovement : MonoBehaviour
         // .normalized ensures diagonal movement isn't faster than forward movement
         return inputDir.normalized * currentSpeed;
     }
+
+    void UpdateAnimation()
+    {
+        if(animator == null) return;
+
+        float x = Input.GetAxisRaw("Horizontal");
+        float z = Input.GetAxisRaw("Vertical");
+
+        if((Mathf.Abs(x) > 0.1f || Mathf.Abs(z) > 0.1f) && currentSpeed > 0.1f)
+        {
+            animator.SetBool("isMoving", true);
+            animator.SetBool("isStopped", false);
+
+            float speedPercentage = currentSpeed / maxSpeed;
+            animator.speed = Mathf.Clamp(speedPercentage, 0.2f, 1.5f);
+        }
+        else
+        {
+            animator.SetBool("isMoving", false);
+            animator.SetBool("isStopped", true);
+
+            animator.speed = 1.0f;
+        }
+    }
 }
