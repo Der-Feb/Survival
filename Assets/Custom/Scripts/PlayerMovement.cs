@@ -14,6 +14,7 @@ public class PlayerMovement : MonoBehaviour
     public float acceleration = 10f;
     public float deacceleration = 120f;
     [HideInInspector] public float currentSpeed = 0f;
+    public float baseSpeed = 6f;
 
     [Header("Physics Settings")]
     public float gravity = -19.62f; // -9.81 * 2
@@ -24,6 +25,8 @@ public class PlayerMovement : MonoBehaviour
     private bool isGrounded;
 
     private float inputX, inputZ;
+
+    private float visualAnimSpeed = 1.0f;
 
     void Update()
     {
@@ -75,19 +78,18 @@ public class PlayerMovement : MonoBehaviour
         Vector3 inputDir = transform.right * inputX + transform.forward * inputZ;
 
         // Check if the player is actually trying to move
-        if (inputDir.magnitude > 0.1f)
+        if (Input.GetKey(KeyCode.RightControl))
         {
             // v = u + at
             currentSpeed += acceleration * Time.deltaTime;
+            currentSpeed = Mathf.Min(currentSpeed, maxSpeed);
         }
         else
         {
-            // Apply friction/drag when no keys are pressed
-            currentSpeed -= deacceleration * Time.deltaTime;
+            // KEY IS UP: Instead of snapping, smoothly decelerate back down to baseSpeed
+            // 30f here acts as your deceleration rate. You can tweak this number higher or lower!
+            currentSpeed = Mathf.MoveTowards(currentSpeed, baseSpeed, 30f * Time.deltaTime);
         }
-
-        // Clamp speed between 0 and our maximum allowed speed
-        currentSpeed = Mathf.Clamp(currentSpeed, 0f, maxSpeed);
 
         UpdateAnimation();
 
@@ -95,9 +97,6 @@ public class PlayerMovement : MonoBehaviour
         // .normalized ensures diagonal movement isn't faster than forward movement
         return inputDir.normalized * currentSpeed;
     }
-
-    private float visualAnimSpeed = 1.0f;
-    
     void UpdateAnimation()
     {
         if(animator == null) return;
