@@ -59,4 +59,10 @@ public class InputManager : MonoBehaviour
             IsFocusing = Input.GetKey(KeyCode.F);           
         }
     }
+
+    public void ChangeControlScheme(int schemeIndex)
+    {
+        // 0 = ArrowKeys, 1 = WASD
+        activeScheme = (ControlScheme)schemeIndex;
+    }
 }
