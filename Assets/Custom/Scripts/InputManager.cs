@@ -8,6 +8,8 @@ public enum ControlScheme
 
 public class InputManager : MonoBehaviour
 {
+
+    // making InputManager singleton
     public static InputManager Instance { get; private set; }
 
     [Header("Profile Configuration")]
@@ -43,16 +45,12 @@ public class InputManager : MonoBehaviour
             
             JumpPressed = Input.GetKeyDown(KeyCode.Return);     
             IsFocusing = Input.GetKey(KeyCode.RightShift);     
-
-            // MAGIC HAPPENS HERE:
-            // We tell the InputManager to check if Left Click OR Right Control is pressed.
-            // This tricks your untouched PlayerMovement script into responding to Left Click automatically!
-            IsSprinting = Input.GetKey(KeyCode.Mouse0) || Input.GetKey(KeyCode.RightControl); 
+            IsSprinting = Input.GetKey(KeyCode.Mouse0) || Input.GetKey(KeyCode.RightControl);
         }
         else if (activeScheme == ControlScheme.WASD)
         {
-            Horizontal = Input.GetAxisRaw("Horizontal"); 
-            Vertical = Input.GetAxisRaw("Vertical");     
+            Horizontal = (Input.GetKey(KeyCode.D) ? 1f : 0f) - (Input.GetKey(KeyCode.A) ? 1f : 0f);
+            Vertical = (Input.GetKey(KeyCode.W) ? 1f : 0f) - (Input.GetKey(KeyCode.S) ? 1f : 0f);    
             
             JumpPressed = Input.GetButtonDown("Jump");   
             IsSprinting = Input.GetKey(KeyCode.LeftShift);  

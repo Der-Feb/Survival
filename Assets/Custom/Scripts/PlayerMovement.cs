@@ -39,8 +39,8 @@ public class PlayerMovement : MonoBehaviour
         }
 
         // 2. Horizontal Movement (Using our Accelerate method)
-        inputX = Input.GetAxisRaw("Horizontal");
-        inputZ = Input.GetAxisRaw("Vertical");
+        inputX = InputManager.Instance.Horizontal;
+        inputZ = InputManager.Instance.Vertical;
 
         Vector3 move = Vector3.zero;
 
