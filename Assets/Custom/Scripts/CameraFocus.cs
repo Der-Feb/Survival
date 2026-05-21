@@ -38,7 +38,7 @@ public class CameraFocus : MonoBehaviour
 
     void Update()
     {
-        isFocusing = Input.GetKey(KeyCode.RightShift);
+        isFocusing = InputManager.Instance.IsFocusing;
         ApplyFocus(isFocusing);
     }
 
