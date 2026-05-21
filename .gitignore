@@ -43,6 +43,7 @@ desktop.ini
 # --- Crashlytics / Bug Reporting ---
 crashlytics-build.properties
 
+# Assets
 /Assets/TutorialInfo/
 /Assets/InputSystem_Actions.inputactions
 /Assets/InputSystem_Actions.inputactions.meta
@@ -54,3 +55,4 @@ crashlytics-build.properties
 /Assets/TextMesh Pro/
 /Assets/Rabbits/
 /Assets/@PaulosCreations/
+/Assets/FerociousIndustries/
