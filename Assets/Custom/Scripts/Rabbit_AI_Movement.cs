@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
  
-public class AI_Movement : MonoBehaviour
+public class Rabbit_AI_Movement : MonoBehaviour
 {
  
     Animator animator;

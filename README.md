@@ -16,6 +16,3 @@ Once imported, Unity should automatically reconnect the models and materials in 
 
 5. **Little Soldier**: For the character(player)
    - [Little Soldier](https://assetstore.unity.com/packages/3d/characters/humanoids/little-soldier-292340)
-
-6. **PBR Stegasaurus**: For villains
-   - [PBR Stegasaurus](https://assetstore.unity.com/packages/3d/characters/animals/pbr-stegasaurus-256004)
