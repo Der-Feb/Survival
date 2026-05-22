@@ -53,5 +53,9 @@ crashlytics-build.properties
 /Assets/HDRPDefaultResources/
 /UIElementsSchema/
 /Assets/TextMesh Pro/
-/Assets/Rabbits/
-/Assets/@PaulosCreations/
+/Assets/Rabbits/*
+/Assets/@PaulosCreations/*
+/Assets/Tiger/*
+
+!/Assets/Tiger/
+!/Assets/Rabbits/Scripts/
