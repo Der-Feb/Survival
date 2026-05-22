@@ -57,5 +57,5 @@ crashlytics-build.properties
 /Assets/@PaulosCreations/*
 /Assets/Tiger/*
 
-!/Assets/Tiger/
 !/Assets/Rabbits/Scripts/
+!/Assets/Tiger/Scripts
