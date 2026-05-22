@@ -1,84 +1,84 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.AI;
- 
+using UnityEngine.AI; // MUST include this for pathfinding
+
+[RequireComponent(typeof(NavMeshAgent))]
 public class Rabbit_AI_Movement : MonoBehaviour
 {
- 
     Animator animator;
- 
-    public float moveSpeed = 0.2f;
- 
-    Vector3 stopPosition;
- 
+    NavMeshAgent agent; // Control movement via the agent
+
+    public float moveSpeed = 2.0f; // Higher default so it doesn't crawl
+    public float wanderRadius = 5f; // How far the rabbit can choose to wander
+
     float walkTime;
     public float walkCounter;
     float waitTime;
     public float waitCounter;
- 
-    int WalkDirection;
- 
+
     public bool isWalking;
- 
-    // Start is called before the first frame update
+
     void Start()
     {
         animator = GetComponent<Animator>();
- 
-        //So that all the prefabs don't move/stop at the same time
-        walkTime = Random.Range(3,6);
-        waitTime = Random.Range(5,7);
- 
- 
+        agent = GetComponent<NavMeshAgent>();
+
+        // Apply speeds directly to the pathfinding vehicle
+        agent.speed = moveSpeed;
+
+        walkTime = Random.Range(3, 6);
+        waitTime = Random.Range(5, 7);
+
         waitCounter = waitTime;
         walkCounter = walkTime;
- 
+
         ChooseDirection();
     }
- 
-    // Update is called once per frame
+
     void Update()
     {
         if (isWalking)
         {
- 
             animator.SetBool("isRunning", true);
             walkCounter -= Time.deltaTime;
 
-            float[] rotationDirections = {0f, 90f, -90f, 180f};
- 
-            transform.localRotation = Quaternion.Euler(0f, rotationDirections[WalkDirection], 0f);
-            transform.position += transform.forward * moveSpeed * Time.deltaTime;
- 
+            // Enforce that the agent stays active and moving
+            agent.isStopped = false;
+
             if (walkCounter <= 0)
             {
-                stopPosition = new Vector3(transform.position.x, transform.position.y, transform.position.z);
                 isWalking = false;
-                //stop movement
-                transform.position = stopPosition;
+                agent.isStopped = true; // Safely stop NavMesh agent pathing
+                agent.velocity = Vector3.zero; // Kill momentum instantly
                 animator.SetBool("isRunning", false);
-                //reset the waitCounter
                 waitCounter = waitTime;
             }
         }
         else
         {
- 
             waitCounter -= Time.deltaTime;
- 
+
             if (waitCounter <= 0)
             {
                 ChooseDirection();
             }
         }
     }
- 
- 
+
     public void ChooseDirection()
     {
-        WalkDirection = Random.Range(0, 4);
- 
+        // Calculate a safe, random point directly ON the baked NavMesh floor
+        Vector3 randomDirection = Random.insideUnitSphere * wanderRadius;
+        randomDirection += transform.position;
+        
+        NavMeshHit hit;
+        // Sample within radius to guarantee the coordinate is reachable
+        if (NavMesh.SamplePosition(randomDirection, out hit, wanderRadius, 1))
+        {
+            agent.SetDestination(hit.position);
+        }
+
         isWalking = true;
         walkCounter = walkTime;
     }

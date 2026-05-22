@@ -6,10 +6,13 @@ using System.Collections;
 [RequireComponent(typeof(Animator))]
 public class Villain_AI_Controller : MonoBehaviour
 {
+    [Header("Debugging")]
+    [SerializeField] private bool showDebugLogs = true;
+
     [Header("Detection Setup")]
-    public string rabbitTag = "Rabbit"; // Make sure your rabbit prefabs have this tag!
-    public float detectionRadius = 15f;
+    public string rabbitTag = "Rabbit";
     public float attackRadius = 2f;
+    public float scanInterval = 0.3f; // Scan 3 times a second instead of 60+
 
     [Header("Movement Speeds")]
     public float walkSpeed = 2f;
@@ -17,102 +20,162 @@ public class Villain_AI_Controller : MonoBehaviour
 
     private NavMeshAgent agent;
     private Animator animator;
-    private Transform currentTarget;
+    private InteractableObject currentTargetObject; 
+    
     private bool isAttacking = false;
+    private bool hadTargetLastFrame = false;
+    private float scanTimer = 0f;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
-        
-        // Start by patrolling or idling at normal walk speed
         agent.speed = walkSpeed;
+
+        if (!agent.isOnNavMesh && showDebugLogs)
+            Debug.LogError($"[Tiger] CRITICAL: {gameObject.name} is NOT on a baked NavMesh!");
     }
 
     void Update()
     {
-        // Don't interrupt the attack/sound sequence with movement logic
         if (isAttacking) return;
 
-        FindNearestRabbit();
-
-        if (currentTarget != null)
+        // Throttle the global search using the scan interval timer
+        scanTimer += Time.deltaTime;
+        if (scanTimer >= scanInterval)
         {
-            float distanceToTarget = Vector3.Distance(transform.position, currentTarget.position);
+            scanTimer = 0f;
+            FindNearestInteractableRabbit();
+        }
 
+        // If we have an active target from our search, hunt it down!
+        if (currentTargetObject != null)
+        {
+            if (!hadTargetLastFrame && showDebugLogs)
+            {
+                Debug.Log($"[Tiger AI] Target Acquired → '{currentTargetObject.GetItemName()}'");
+                hadTargetLastFrame = true;
+            }
+
+            Vector3 targetPosition = currentTargetObject.transform.position;
+            float distanceToTarget = Vector3.Distance(transform.position, targetPosition);
+
+            // Check if we are close enough to strike
             if (distanceToTarget <= attackRadius)
             {
-                // We reached the rabbit! Trigger the attack chain
-                StartCoroutine(ExecuteAttackSequence());
+                StartCoroutine(ExecuteAttackSequence(currentTargetObject));
             }
             else
             {
-                // Chase the rabbit at full run speed
+                // Full sprint towards the rabbit's position
                 agent.speed = runSpeed;
-                agent.SetDestination(currentTarget.position);
+                agent.SetDestination(targetPosition);
             }
         }
         else
         {
-            // No rabbits found, slow down to idle/walk pace
+            if (hadTargetLastFrame && showDebugLogs)
+            {
+                Debug.Log("[Tiger AI] Target lost or no rabbits left in the world. Returning to baseline idle loop.");
+                hadTargetLastFrame = false;
+            }
+
             agent.speed = walkSpeed;
-            // Optional: Insert your patrol point logic here if desired
         }
 
-        // Update the Animator speed parameter based on actual NavMesh movement velocity
-        float currentVelocity = agent.velocity.magnitude;
-        animator.SetFloat("Speed", currentVelocity);
+        // Seamless animator updates
+        animator.SetFloat("Speed", agent.velocity.magnitude);
     }
 
-    void FindNearestRabbit()
+    void FindNearestInteractableRabbit()
     {
-        GameObject[] rabbits = GameObject.FindGameObjectsWithTag(rabbitTag);
-        float shortestDistance = Mathf.Infinity;
-        Transform nearestRabbit = null;
-
-        foreach (GameObject rabbit in rabbits)
+        // 1. Gather every single rabbit currently alive in the game world
+        GameObject[] rawRabbits = GameObject.FindGameObjectsWithTag(rabbitTag);
+        
+        // TARGET LOCK PROTECTION:
+        // If we already have a target, check if it's still alive/valid in the world.
+        if (currentTargetObject != null)
         {
-            float distanceToRabbit = Vector3.Distance(transform.position, rabbit.transform.position);
-            if (distanceToRabbit < shortestDistance && distanceToRabbit <= detectionRadius)
+            bool targetStillExists = false;
+            foreach (GameObject rabbitGo in rawRabbits)
             {
-                shortestDistance = distanceToRabbit;
-                nearestRabbit = rabbit.transform;
+                if (rabbitGo != null && rabbitGo.GetComponent<InteractableObject>() == currentTargetObject)
+                {
+                    targetStillExists = true;
+                    break;
+                }
+            }
+
+            // If our locked target is still alive, stick with it! Don't look at anything else.
+            if (targetStillExists)
+            {
+                return; 
+            }
+            else
+            {
+                // Target was likely destroyed or caught, clear the lock to find a new one
+                currentTargetObject = null;
             }
         }
 
-        currentTarget = nearestRabbit;
+        // 2. GLOBAL SEARCH: Find the absolute closest rabbit, ignoring any radius limits
+        float shortestDistance = Mathf.Infinity;
+        InteractableObject nearestRabbitObject = null;
+
+        foreach (GameObject rabbitGo in rawRabbits)
+        {
+            InteractableObject interactable = rabbitGo.GetComponent<InteractableObject>();
+            if (interactable == null) continue; // Skip if it doesn't have your naming script
+
+            float distanceToRabbit = Vector3.Distance(transform.position, rabbitGo.transform.position);
+
+            // If this rabbit is closer than any other rabbit we've checked so far, save it
+            if (distanceToRabbit < shortestDistance)
+            {
+                shortestDistance = distanceToRabbit;
+                nearestRabbitObject = interactable;
+            }
+        }
+
+        // 3. Lock onto the absolute closest rabbit found across the entire map
+        if (nearestRabbitObject != null)
+        {
+            currentTargetObject = nearestRabbitObject;
+        }
     }
 
-    IEnumerator ExecuteAttackSequence()
+    IEnumerator ExecuteAttackSequence(InteractableObject target)
     {
         isAttacking = true;
-        agent.isStopped = true; // Stop moving instantly during combat
+        agent.isStopped = true;
         animator.SetFloat("Speed", 0f);
 
-        // 1. Trigger the Hit Animation
-        animator.SetInteger("ActionTrigger", 1);
+        string rabbitName = target.GetItemName();
         
-        // Wait a brief moment for the strike to connect (adjust time to match your clip length)
+        if (showDebugLogs)
+            Debug.Log($"[Tiger Combat] Striking distance initialized at coordinates: {target.transform.position}");
+
+        // 1. Hit animation
+        animator.SetInteger("ActionTrigger", 1);
         yield return new WaitForSeconds(1.0f);
 
-        // 2. Trigger the Sound/Roar Animation right after
-        animator.SetInteger("ActionTrigger", 2);
+        Debug.Log($"[Tiger Combat] SUCCESS! Tiger beat {rabbitName} at close range!");
 
-        // Wait for the roar animation loop to completely play out
+        // 2. Sound/Roar animation
+        animator.SetInteger("ActionTrigger", 2);
         yield return new WaitForSeconds(1.5f);
 
-        // 3. Reset the state parameters back to idle
+        // 3. Reset loop variables cleanly
         animator.SetInteger("ActionTrigger", 0);
-        currentTarget = null;
+        currentTargetObject = null;
+        hadTargetLastFrame = false; 
         agent.isStopped = false;
         isAttacking = false;
     }
 
-    // Visualizes the detection zones inside the Scene window for easy balancing
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, detectionRadius);
+        // Draw the attack striking zone in red
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
     }

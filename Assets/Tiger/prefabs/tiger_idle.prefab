@@ -1456,6 +1456,9 @@ GameObject:
   - component: {fileID: 8382202049970302474}
   - component: {fileID: 4949042245005940052}
   - component: {fileID: -5589260411504669619}
+  - component: {fileID: -7282148199346896762}
+  - component: {fileID: 5088157762284370113}
+  - component: {fileID: 5443139198245738260}
   m_Layer: 0
   m_Name: tiger_idle
   m_TagString: Tiger
@@ -1473,7 +1476,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 575.1251, y: 0.07002386, z: 606.2884}
-  m_LocalScale: {x: 1.95, y: 1.95, z: 1.95}
+  m_LocalScale: {x: 3.9899998, y: 3.9899998, z: 3.9899998}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 2887356078110093240}
@@ -1524,6 +1527,61 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
+--- !u!114 &-7282148199346896762
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1103019080430449189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c8ff3ebe1c286549a033ed460ee754a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Villain_AI_Controller
+  showDebugLogs: 1
+  rabbitTag: Rabbit
+  detectionRadius: 15
+  attackRadius: 2
+  scanInterval: 0.3
+  walkSpeed: 2
+  runSpeed: 5.5
+--- !u!114 &5088157762284370113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1103019080430449189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e744221baa939474d9ff3e4f4ca2ee6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InteractableObject
+  ItemName: Tiger
+--- !u!136 &5443139198245738260
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1103019080430449189}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 1
+  m_Direction: 1
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1104896511051485493
 GameObject:
   m_ObjectHideFlags: 0

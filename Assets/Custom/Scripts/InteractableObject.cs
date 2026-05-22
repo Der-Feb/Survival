@@ -18,7 +18,6 @@ public class InteractableObject : MonoBehaviour
         }
 
         nameCounters[ItemName]++;
-
         int index = nameCounters[ItemName];
 
         finalName = index > 1 ? $"{ItemName} {index}" : ItemName;
