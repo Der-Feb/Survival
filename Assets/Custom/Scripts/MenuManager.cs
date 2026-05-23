@@ -1,27 +1,38 @@
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
 public class MenuManager : MonoBehaviour
 {
-
     [Header("Ui panels")]
     public GameObject pauseMenuCanvas;
     public GameObject mainMenuPanel;
     public GameObject settingsPanel;
+    public GameObject inventoryPanel; // Added Inventory Panel slot
 
     private bool isPaused = false;
-
-    void Start()
-    {
-        
-    }
+    private bool isInventoryOpen = false;
 
     void Update()
     {
-        // Detect ESC key to open/close menu
+        // 1. Detect I key to toggle inventory directly during gameplay
+        if (Input.GetKeyDown(KeyCode.I))
+        {
+            if (isInventoryOpen)
+            {
+                ResumeGame();
+            }
+            else
+            {
+                OpenInventoryDirectly();
+            }
+        }
+
+        // 2. Detect ESC key to handle standard menu logic
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (isPaused)
+            if (isPaused || isInventoryOpen)
                 ResumeGame();
             else
                 PauseGame();
@@ -31,41 +42,82 @@ public class MenuManager : MonoBehaviour
     public void PauseGame()
     {
         isPaused = true;
+        isInventoryOpen = false;
+
         pauseMenuCanvas.SetActive(true);
         mainMenuPanel.SetActive(true);
         settingsPanel.SetActive(false);
+        inventoryPanel.SetActive(false); // Make sure inventory starts hidden
 
-        Time.timeScale = 0f; // Freeze game physics and movement
-        Cursor.lockState = CursorLockMode.None; // Unlock mouse cursor
-        Cursor.visible = true;
+        FreezeGameplayTime(true);
     }
 
     public void ResumeGame()
     {
         isPaused = false;
+        isInventoryOpen = false;
+
         pauseMenuCanvas.SetActive(false);
 
-        Time.timeScale = 1f; // Unfreeze game physics
-        Cursor.lockState = CursorLockMode.Locked; // Relock mouse cursor to gameplay
-        Cursor.visible = false;
+        FreezeGameplayTime(false);
     }
 
-    public void RestartGame()
+    // Direct open call via 'I' key shortcut
+    public void OpenInventoryDirectly()
     {
-        Time.timeScale = 1f; // Always unfreeze time before reloading!
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name); // Reload current level
+        isPaused = false;
+        isInventoryOpen = true;
+
+        pauseMenuCanvas.SetActive(true);
+        mainMenuPanel.SetActive(false);
+        settingsPanel.SetActive(false);
+        inventoryPanel.SetActive(true); // Show inventory panel directly
+
+        FreezeGameplayTime(true);
+    }
+
+    // Navigational button call from inside the pause menu panel
+    public void SwitchToInventoryPanel()
+    {
+        mainMenuPanel.SetActive(false);
+        settingsPanel.SetActive(false);
+        inventoryPanel.SetActive(true);
+    }
+
+    // Navigational back button call from inside the inventory panel
+    public void CloseInventoryPanelToMenu()
+    {
+        mainMenuPanel.SetActive(true);
+        settingsPanel.SetActive(false);
+        inventoryPanel.SetActive(false);
     }
 
     public void OpenSettings()
     {
         mainMenuPanel.SetActive(false);
         settingsPanel.SetActive(true);
+        inventoryPanel.SetActive(false);
     }
 
     public void CloseSettings()
     {
         mainMenuPanel.SetActive(true);
         settingsPanel.SetActive(false);
+        inventoryPanel.SetActive(false);
+    }
+
+    public void RestartGame()
+    {
+        Time.timeScale = 1f; 
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name); 
+    }
+
+    // Helper function to cleanly lock/unlock gameplay states
+    private void FreezeGameplayTime(bool freeze)
+    {
+        Time.timeScale = freeze ? 0f : 1f;
+        Cursor.lockState = freeze ? CursorLockMode.None : CursorLockMode.Locked;
+        Cursor.visible = freeze;
     }
 
     // --- Control Adjustments ---
@@ -73,8 +125,7 @@ public class MenuManager : MonoBehaviour
     {
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.ChangeControlScheme(0); // 0 = ArrowKeys enum
-            // Debug.Log("Switched Controls to Arrow Keys");
+            InputManager.Instance.ChangeControlScheme(0); 
         }
     }
 
@@ -82,8 +133,7 @@ public class MenuManager : MonoBehaviour
     {
         if (InputManager.Instance != null)
         {
-            InputManager.Instance.ChangeControlScheme(1); // 1 = WASD enum
-            // Debug.Log("Switched Controls to WASD");
+            InputManager.Instance.ChangeControlScheme(1); 
         }
     }
 }
