@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.AI;
 using System.Collections;
+using Rabbits;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(Animator))]
@@ -11,8 +12,10 @@ public class Villain_AI_Controller : MonoBehaviour
 
     [Header("Detection Setup")]
     public string rabbitTag = "Rabbit";
-    public float attackRadius = 2f;
-    public float scanInterval = 0.3f; // Scan 3 times a second instead of 60+
+    
+    // INCREASED: Expanded radius to comfortably clear physical boundaries of colliding capsules
+    public float attackRadius = 3.5f; 
+    public float scanInterval = 0.3f; 
 
     [Header("Movement Speeds")]
     public float walkSpeed = 2f;
@@ -32,6 +35,14 @@ public class Villain_AI_Controller : MonoBehaviour
         animator = GetComponent<Animator>();
         agent.speed = walkSpeed;
 
+        // FIX: Configure stopping distance dynamically to prevent physical collision push locks
+        agent.stoppingDistance = attackRadius - 0.4f;
+
+        if (showDebugLogs)
+        {
+            Debug.Log($"[Tiger Start] Initialized. attackRadius: {attackRadius} | Generated stoppingDistance: {agent.stoppingDistance}");
+        }
+
         if (!agent.isOnNavMesh && showDebugLogs)
             Debug.LogError($"[Tiger] CRITICAL: {gameObject.name} is NOT on a baked NavMesh!");
     }
@@ -40,7 +51,6 @@ public class Villain_AI_Controller : MonoBehaviour
     {
         if (isAttacking) return;
 
-        // Throttle the global search using the scan interval timer
         scanTimer += Time.deltaTime;
         if (scanTimer >= scanInterval)
         {
@@ -48,7 +58,6 @@ public class Villain_AI_Controller : MonoBehaviour
             FindNearestInteractableRabbit();
         }
 
-        // If we have an active target from our search, hunt it down!
         if (currentTargetObject != null)
         {
             if (!hadTargetLastFrame && showDebugLogs)
@@ -58,16 +67,28 @@ public class Villain_AI_Controller : MonoBehaviour
             }
 
             Vector3 targetPosition = currentTargetObject.transform.position;
-            float distanceToTarget = Vector3.Distance(transform.position, targetPosition);
+            
+            // FIX: Flatten vectors to run 2D horizontal distance checks, bypassing pivot height offsets
+            Vector3 flatTigerPos = new Vector3(transform.position.x, 0, transform.position.z);
+            Vector3 flatTargetPos = new Vector3(targetPosition.x, 0, targetPosition.z);
+            float distanceToTarget = Vector3.Distance(flatTigerPos, flatTargetPos);
 
-            // Check if we are close enough to strike
+            // LOG ADDED: This will print every frame while chasing so you can see why it's stuck pushing
+            if (showDebugLogs)
+            {
+                Debug.Log($"[Tiger Distance Check] Calculated Distance: {distanceToTarget:F2}m | Required Attack Radius: {attackRadius}m");
+            }
+
             if (distanceToTarget <= attackRadius)
             {
+                if (showDebugLogs)
+                {
+                    Debug.Log($"[Tiger Logic Target] Distance condition MET ({distanceToTarget:F2} <= {attackRadius}). Entering Coroutine.");
+                }
                 StartCoroutine(ExecuteAttackSequence(currentTargetObject));
             }
             else
             {
-                // Full sprint towards the rabbit's position
                 agent.speed = runSpeed;
                 agent.SetDestination(targetPosition);
             }
@@ -83,17 +104,13 @@ public class Villain_AI_Controller : MonoBehaviour
             agent.speed = walkSpeed;
         }
 
-        // Seamless animator updates
         animator.SetFloat("Speed", agent.velocity.magnitude);
     }
 
     void FindNearestInteractableRabbit()
     {
-        // 1. Gather every single rabbit currently alive in the game world
         GameObject[] rawRabbits = GameObject.FindGameObjectsWithTag(rabbitTag);
         
-        // TARGET LOCK PROTECTION:
-        // If we already have a target, check if it's still alive/valid in the world.
         if (currentTargetObject != null)
         {
             bool targetStillExists = false;
@@ -106,30 +123,26 @@ public class Villain_AI_Controller : MonoBehaviour
                 }
             }
 
-            // If our locked target is still alive, stick with it! Don't look at anything else.
             if (targetStillExists)
             {
                 return; 
             }
             else
             {
-                // Target was likely destroyed or caught, clear the lock to find a new one
                 currentTargetObject = null;
             }
         }
 
-        // 2. GLOBAL SEARCH: Find the absolute closest rabbit, ignoring any radius limits
         float shortestDistance = Mathf.Infinity;
         InteractableObject nearestRabbitObject = null;
 
         foreach (GameObject rabbitGo in rawRabbits)
         {
             InteractableObject interactable = rabbitGo.GetComponent<InteractableObject>();
-            if (interactable == null) continue; // Skip if it doesn't have your naming script
+            if (interactable == null) continue; 
 
             float distanceToRabbit = Vector3.Distance(transform.position, rabbitGo.transform.position);
 
-            // If this rabbit is closer than any other rabbit we've checked so far, save it
             if (distanceToRabbit < shortestDistance)
             {
                 shortestDistance = distanceToRabbit;
@@ -137,7 +150,6 @@ public class Villain_AI_Controller : MonoBehaviour
             }
         }
 
-        // 3. Lock onto the absolute closest rabbit found across the entire map
         if (nearestRabbitObject != null)
         {
             currentTargetObject = nearestRabbitObject;
@@ -155,17 +167,35 @@ public class Villain_AI_Controller : MonoBehaviour
         if (showDebugLogs)
             Debug.Log($"[Tiger Combat] Striking distance initialized at coordinates: {target.transform.position}");
 
-        // 1. Hit animation
+        // 1. Fire hit animation sequence using original ActionTrigger parameter
+        if (showDebugLogs) Debug.Log("[Tiger Combat] Triggering ActionTrigger = 1 (Hit)");
         animator.SetInteger("ActionTrigger", 1);
-        yield return new WaitForSeconds(1.0f);
+        yield return new WaitForSeconds(1.0f); 
 
-        Debug.Log($"[Tiger Combat] SUCCESS! Tiger beat {rabbitName} at close range!");
+        if (target != null)
+        {
+            RabbitHealth rabbitHealth = target.GetComponent<RabbitHealth>();
+            if (rabbitHealth != null)
+            {
+                // This method triggers RabbitHealth.OnRabbitDestroyed internally
+                rabbitHealth.TakeFatalHit();
+                Debug.Log($"[Tiger Combat] SUCCESS! Tiger disintegrated {rabbitName}!");
+            }
+            else
+            {
+                // Clean fallback cleanup if health component is missing
+                if (showDebugLogs) Debug.LogWarning($"[Tiger Combat] RabbitHealth missing on {rabbitName}! Hard destroying GameObject.");
+                Destroy(target.gameObject);
+            }
+        }
 
-        // 2. Sound/Roar animation
+        // 2. Play roar/sound animation sequence
+        if (showDebugLogs) Debug.Log("[Tiger Combat] Triggering ActionTrigger = 2 (Roar)");
         animator.SetInteger("ActionTrigger", 2);
         yield return new WaitForSeconds(1.5f);
 
-        // 3. Reset loop variables cleanly
+        // 3. Reset tracking loop parameters cleanly back to baseline loop states
+        if (showDebugLogs) Debug.Log("[Tiger Combat] Attack sequence complete. Resetting parameters to baseline.");
         animator.SetInteger("ActionTrigger", 0);
         currentTargetObject = null;
         hadTargetLastFrame = false; 
@@ -175,8 +205,26 @@ public class Villain_AI_Controller : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        // Draw the attack striking zone in red
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
+    }
+
+    private void OnEnable()
+    {
+        RabbitHealth.OnRabbitDestroyed += HandleTargetVaporized;
+    }
+
+    private void OnDisable()
+    {
+        RabbitHealth.OnRabbitDestroyed -= HandleTargetVaporized;
+    }
+
+    private void HandleTargetVaporized()
+    {
+        if (currentTargetObject == null || currentTargetObject.gameObject == null)
+        {
+            currentTargetObject = null;
+            hadTargetLastFrame = false;
+        }
     }
 }
