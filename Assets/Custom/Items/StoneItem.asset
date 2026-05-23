@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: StoneItem
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemName: Stone
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: b77fd090e643e6c4386e9204103d990e, type: 3}
