@@ -74,7 +74,7 @@ public class MenuManager : MonoBehaviour
         if (InputManager.Instance != null)
         {
             InputManager.Instance.ChangeControlScheme(0); // 0 = ArrowKeys enum
-            Debug.Log("Switched Controls to Arrow Keys");
+            // Debug.Log("Switched Controls to Arrow Keys");
         }
     }
 
@@ -83,7 +83,7 @@ public class MenuManager : MonoBehaviour
         if (InputManager.Instance != null)
         {
             InputManager.Instance.ChangeControlScheme(1); // 1 = WASD enum
-            Debug.Log("Switched Controls to WASD");
+            // Debug.Log("Switched Controls to WASD");
         }
     }
 }

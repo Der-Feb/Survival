@@ -40,11 +40,14 @@ public class Villain_AI_Controller : MonoBehaviour
 
         if (showDebugLogs)
         {
-            Debug.Log($"[Tiger Start] Initialized. attackRadius: {attackRadius} | Generated stoppingDistance: {agent.stoppingDistance}");
+            // Debug.Log($"[Tiger Start] Initialized. attackRadius: {attackRadius} | Generated stoppingDistance: {agent.stoppingDistance}");
         }
 
         if (!agent.isOnNavMesh && showDebugLogs)
-            Debug.LogError($"[Tiger] CRITICAL: {gameObject.name} is NOT on a baked NavMesh!");
+        {
+            
+            // Debug.LogError($"[Tiger] CRITICAL: {gameObject.name} is NOT on a baked NavMesh!");
+        }
     }
 
     void Update()
@@ -62,7 +65,7 @@ public class Villain_AI_Controller : MonoBehaviour
         {
             if (!hadTargetLastFrame && showDebugLogs)
             {
-                Debug.Log($"[Tiger AI] Target Acquired → '{currentTargetObject.GetItemName()}'");
+                // Debug.Log($"[Tiger AI] Target Acquired → '{currentTargetObject.GetItemName()}'");
                 hadTargetLastFrame = true;
             }
 
@@ -76,14 +79,14 @@ public class Villain_AI_Controller : MonoBehaviour
             // LOG ADDED: This will print every frame while chasing so you can see why it's stuck pushing
             if (showDebugLogs)
             {
-                Debug.Log($"[Tiger Distance Check] Calculated Distance: {distanceToTarget:F2}m | Required Attack Radius: {attackRadius}m");
+                // Debug.Log($"[Tiger Distance Check] Calculated Distance: {distanceToTarget:F2}m | Required Attack Radius: {attackRadius}m");
             }
 
             if (distanceToTarget <= attackRadius)
             {
                 if (showDebugLogs)
                 {
-                    Debug.Log($"[Tiger Logic Target] Distance condition MET ({distanceToTarget:F2} <= {attackRadius}). Entering Coroutine.");
+                    // Debug.Log($"[Tiger Logic Target] Distance condition MET ({distanceToTarget:F2} <= {attackRadius}). Entering Coroutine.");
                 }
                 StartCoroutine(ExecuteAttackSequence(currentTargetObject));
             }
@@ -97,7 +100,7 @@ public class Villain_AI_Controller : MonoBehaviour
         {
             if (hadTargetLastFrame && showDebugLogs)
             {
-                Debug.Log("[Tiger AI] Target lost or no rabbits left in the world. Returning to baseline idle loop.");
+                // Debug.Log("[Tiger AI] Target lost or no rabbits left in the world. Returning to baseline idle loop.");
                 hadTargetLastFrame = false;
             }
 
@@ -165,10 +168,10 @@ public class Villain_AI_Controller : MonoBehaviour
         string rabbitName = target.GetItemName();
         
         if (showDebugLogs)
-            Debug.Log($"[Tiger Combat] Striking distance initialized at coordinates: {target.transform.position}");
+            // Debug.Log($"[Tiger Combat] Striking distance initialized at coordinates: {target.transform.position}");
 
         // 1. Fire hit animation sequence using original ActionTrigger parameter
-        if (showDebugLogs) Debug.Log("[Tiger Combat] Triggering ActionTrigger = 1 (Hit)");
+        if (showDebugLogs) // Debug.Log("[Tiger Combat] Triggering ActionTrigger = 1 (Hit)");
         animator.SetInteger("ActionTrigger", 1);
         yield return new WaitForSeconds(1.0f); 
 
@@ -179,23 +182,23 @@ public class Villain_AI_Controller : MonoBehaviour
             {
                 // This method triggers RabbitHealth.OnRabbitDestroyed internally
                 rabbitHealth.TakeFatalHit();
-                Debug.Log($"[Tiger Combat] SUCCESS! Tiger disintegrated {rabbitName}!");
+                // Debug.Log($"[Tiger Combat] SUCCESS! Tiger disintegrated {rabbitName}!");
             }
             else
             {
                 // Clean fallback cleanup if health component is missing
-                Debug.LogError($"[Tiger Combat] Found target {target.name}, but couldn't find a RabbitHealth component on it or its children!");
+                // Debug.LogError($"[Tiger Combat] Found target {target.name}, but couldn't find a RabbitHealth component on it or its children!");
                 Destroy(target.gameObject);
             }
         }
 
         // 2. Play roar/sound animation sequence
-        if (showDebugLogs) Debug.Log("[Tiger Combat] Triggering ActionTrigger = 2 (Roar)");
+        if (showDebugLogs) // Debug.Log("[Tiger Combat] Triggering ActionTrigger = 2 (Roar)");
         animator.SetInteger("ActionTrigger", 2);
         yield return new WaitForSeconds(1.5f);
 
         // 3. Reset tracking loop parameters cleanly back to baseline loop states
-        if (showDebugLogs) Debug.Log("[Tiger Combat] Attack sequence complete. Resetting parameters to baseline.");
+        if (showDebugLogs) // Debug.Log("[Tiger Combat] Attack sequence complete. Resetting parameters to baseline.");
         animator.SetInteger("ActionTrigger", 0);
         currentTargetObject = null;
         hadTargetLastFrame = false; 

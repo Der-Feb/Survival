@@ -15,25 +15,33 @@ public class EnemySpawner : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("[Spawner] ---- SPAWNER START ----");
-        Debug.Log($"[Spawner] villainPrefab assigned: {villainPrefab != null} | Name: {(villainPrefab != null ? villainPrefab.name : "NULL")}");
-        Debug.Log($"[Spawner] villainTag set to: '{villainTag}'");
-        Debug.Log($"[Spawner] maxActiveVillains: {maxActiveVillains} | spawnInterval: {spawnInterval}s");
-        Debug.Log($"[Spawner] spawnPoints array length: {(spawnPoints != null ? spawnPoints.Length.ToString() : "NULL")}");
+        // Debug.Log("[Spawner] ---- SPAWNER START ----");
+        // Debug.Log($"[Spawner] villainPrefab assigned: {villainPrefab != null} | Name: {(villainPrefab != null ? villainPrefab.name : "NULL")}");
+        // Debug.Log($"[Spawner] villainTag set to: '{villainTag}'");
+        // Debug.Log($"[Spawner] maxActiveVillains: {maxActiveVillains} | spawnInterval: {spawnInterval}s");
+        // Debug.Log($"[Spawner] spawnPoints array length: {(spawnPoints != null ? spawnPoints.Length.ToString() : "NULL")}");
 
         if (villainPrefab == null)
-            Debug.LogError("[Spawner] CRITICAL: villainPrefab is NULL! Assign it in the Inspector.");
+            // Debug.LogError("[Spawner] CRITICAL: villainPrefab is NULL! Assign it in the Inspector.");
 
         if (spawnPoints == null || spawnPoints.Length == 0)
-            Debug.LogError("[Spawner] CRITICAL: No spawnPoints assigned!");
+        {        
+            // Debug.LogError("[Spawner] CRITICAL: No spawnPoints assigned!");
+        }
         else
         {
             for (int i = 0; i < spawnPoints.Length; i++)
             {
                 if (spawnPoints[i] == null)
-                    Debug.LogError($"[Spawner] spawnPoints[{i}] is NULL! Fix the missing reference in the Inspector.");
+                {
+                        
+                    // Debug.LogError($"[Spawner] spawnPoints[{i}] is NULL! Fix the missing reference in the Inspector.");
+                }
                 else
-                    Debug.Log($"[Spawner] spawnPoints[{i}]: '{spawnPoints[i].name}' at position {spawnPoints[i].position}");
+                    {
+                        
+                    // Debug.Log($"[Spawner] spawnPoints[{i}]: '{spawnPoints[i].name}' at position {spawnPoints[i].position}");
+                    }
             }
         }
 
@@ -46,27 +54,27 @@ public class EnemySpawner : MonoBehaviour
         if (spawnTimer >= spawnInterval)
         {
             spawnTimer = 0f;
-            Debug.Log("[Spawner] UPDATE: Interval reached. Running SpawnToCap().");
+            // Debug.Log("[Spawner] UPDATE: Interval reached. Running SpawnToCap().");
             SpawnToCap();
         }
     }
 
     void SpawnToCap()
     {
-        Debug.Log("[Spawner] ---- SpawnToCap() called ----");
+        // Debug.Log("[Spawner] ---- SpawnToCap() called ----");
 
         if (spawnPoints == null || spawnPoints.Length == 0 || villainPrefab == null)
         {
-            Debug.LogWarning("[Spawner] Spawn canceled: prefab or spawnPoints missing.");
+            // Debug.LogWarning("[Spawner] Spawn canceled: prefab or spawnPoints missing.");
             return;
         }
 
         int currentVillainCount = GameObject.FindGameObjectsWithTag(villainTag).Length;
-        Debug.Log($"[Spawner] Active villains with tag '{villainTag}': {currentVillainCount} / {maxActiveVillains}");
+        // Debug.Log($"[Spawner] Active villains with tag '{villainTag}': {currentVillainCount} / {maxActiveVillains}");
 
         if (currentVillainCount >= maxActiveVillains)
         {
-            Debug.Log("[Spawner] Cap reached. No spawn needed.");
+            // Debug.Log("[Spawner] Cap reached. No spawn needed.");
             return;
         }
 
@@ -76,7 +84,7 @@ public class EnemySpawner : MonoBehaviour
         {
             if (spawnPoint == null)
             {
-                Debug.LogWarning("[Spawner] Skipping a null spawnPoint entry.");
+                // Debug.LogWarning("[Spawner] Skipping a null spawnPoint entry.");
                 continue;
             }
 
@@ -87,7 +95,7 @@ public class EnemySpawner : MonoBehaviour
             {
                 if (col.CompareTag(villainTag))
                 {
-                    Debug.Log($"[Spawner] spawnPoint '{spawnPoint.name}' is OCCUPIED by '{col.gameObject.name}'. Skipping.");
+                    // Debug.Log($"[Spawner] spawnPoint '{spawnPoint.name}' is OCCUPIED by '{col.gameObject.name}'. Skipping.");
                     pointIsOccupied = true;
                     break;
                 }
@@ -95,13 +103,19 @@ public class EnemySpawner : MonoBehaviour
 
             if (!pointIsOccupied)
             {
-                Debug.Log($"[Spawner] spawnPoint '{spawnPoint.name}' is FREE. Spawning villain here at {spawnPoint.position}");
+                // Debug.Log($"[Spawner] spawnPoint '{spawnPoint.name}' is FREE. Spawning villain here at {spawnPoint.position}");
                 GameObject spawnedObj = Instantiate(villainPrefab, spawnPoint.position, spawnPoint.rotation);
 
                 if (spawnedObj != null)
-                    Debug.Log($"[Spawner] SUCCESS: Spawned '{spawnedObj.name}' | Tag: '{spawnedObj.tag}' | Position: {spawnedObj.transform.position}");
+                {
+                    
+                    // Debug.Log($"[Spawner] SUCCESS: Spawned '{spawnedObj.name}' | Tag: '{spawnedObj.tag}' | Position: {spawnedObj.transform.position}");
+                }
                 else
-                    Debug.LogError("[Spawner] Instantiate returned NULL!");
+                {
+                    
+                    // Debug.LogError("[Spawner] Instantiate returned NULL!");
+                }
 
                 spawnedOne = true;
                 break; // Spawn one per interval only
@@ -109,6 +123,9 @@ public class EnemySpawner : MonoBehaviour
         }
 
         if (!spawnedOne)
-            Debug.Log("[Spawner] All spawn points are occupied. No spawn this interval.");
+        {
+            
+            // Debug.Log("[Spawner] All spawn points are occupied. No spawn this interval.");
+        }
     }
 }

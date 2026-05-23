@@ -19,7 +19,7 @@ namespace Rabbits
         public void TakeFatalHit()
         {
             // FORCE LOG: This will tell us if the tiger successfully triggered this function
-            Debug.Log($"[CRITICAL CHECK] TakeFatalHit() called on {gameObject.name}!");
+            // Debug.Log($"[CRITICAL CHECK] TakeFatalHit() called on {gameObject.name}!");
 
             if (isVaporized) return;
             isVaporized = true;
@@ -29,7 +29,7 @@ namespace Rabbits
 
         private IEnumerator ExecuteDeathSequence()
         {
-            Debug.Log($"[Rabbit Health] '{gameObject.name}' playing isDead animation.");
+            // Debug.Log($"[Rabbit Health] '{gameObject.name}' playing isDead animation.");
 
             if (animator != null)
             {
