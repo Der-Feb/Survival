@@ -4,10 +4,11 @@ using System.Collections.Generic;
 public class InteractableObject : MonoBehaviour
 {
     public string ItemName;
-
     private string finalName;
 
-    // Tracks how many of each item type have been created
+    // NEW FIELD: Set to true in the inspector for pocketable items
+    public bool storable = false;
+
     private static Dictionary<string, int> nameCounters = new Dictionary<string, int>();
 
     private void Awake()
