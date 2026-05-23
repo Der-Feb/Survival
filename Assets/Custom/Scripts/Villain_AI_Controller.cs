@@ -19,7 +19,7 @@ public class Villain_AI_Controller : MonoBehaviour
 
     [Header("Movement Speeds")]
     public float walkSpeed = 2f;
-    public float runSpeed = 5.5f;
+    public float runSpeed = 10.5f;
 
     private NavMeshAgent agent;
     private Animator animator;
@@ -166,39 +166,36 @@ public class Villain_AI_Controller : MonoBehaviour
         animator.SetFloat("Speed", 0f);
 
         string rabbitName = target.GetItemName();
-        
-        if (showDebugLogs)
-            // Debug.Log($"[Tiger Combat] Striking distance initialized at coordinates: {target.transform.position}");
 
         // 1. Fire hit animation sequence using original ActionTrigger parameter
-        if (showDebugLogs) // Debug.Log("[Tiger Combat] Triggering ActionTrigger = 1 (Hit)");
         animator.SetInteger("ActionTrigger", 1);
         yield return new WaitForSeconds(1.0f); 
 
         if (target != null)
         {
-            RabbitHealth rabbitHealth = target.GetComponent<RabbitHealth>();
+            // FIX: Look everywhere inside the target hierarchy to find the health script
+            RabbitHealth rabbitHealth = target.GetComponentInChildren<RabbitHealth>();
+            
             if (rabbitHealth != null)
             {
-                // This method triggers RabbitHealth.OnRabbitDestroyed internally
-                rabbitHealth.TakeFatalHit();
-                // Debug.Log($"[Tiger Combat] SUCCESS! Tiger disintegrated {rabbitName}!");
+                // Pass 'transform' (the tiger's transform) so the rabbit calculates the push direction
+                rabbitHealth.TakeFatalHit(transform);
             }
             else
             {
-                // Clean fallback cleanup if health component is missing
-                // Debug.LogError($"[Tiger Combat] Found target {target.name}, but couldn't find a RabbitHealth component on it or its children!");
+                // Clean fallback cleanup if health component is completely missing from the prefab
                 Destroy(target.gameObject);
+                
+                // Manual fallback to alert the UI system a rabbit was wiped out
+                Rabbits.RabbitHealth.OnRabbitDestroyed?.Invoke();
             }
         }
 
         // 2. Play roar/sound animation sequence
-        if (showDebugLogs) // Debug.Log("[Tiger Combat] Triggering ActionTrigger = 2 (Roar)");
         animator.SetInteger("ActionTrigger", 2);
         yield return new WaitForSeconds(1.5f);
 
         // 3. Reset tracking loop parameters cleanly back to baseline loop states
-        if (showDebugLogs) // Debug.Log("[Tiger Combat] Attack sequence complete. Resetting parameters to baseline.");
         animator.SetInteger("ActionTrigger", 0);
         currentTargetObject = null;
         hadTargetLastFrame = false; 
