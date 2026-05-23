@@ -25,73 +25,86 @@ namespace Rabbits
 
         private IEnumerator ExecuteManualDeathSequence(Transform attacker)
         {
-            Debug.Log($"[Rabbit Death] Manual momentum sequence initiated for {gameObject.name}.");
-
-            // 1. Kill navigation and physics completely so they don't override our manual movement
-            UnityEngine.AI.NavMeshAgent rabbitAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
-            if (rabbitAgent != null)
+            // FIX: Find the actual prefab container instead of the giant global folder container!
+            // We search upward until we find the component that identifies the rabbit instance root.
+            Transform prefabRoot = transform;
+            InteractableObject interactable = GetComponentInParent<InteractableObject>();
+            
+            if (interactable != null)
             {
-                rabbitAgent.isStopped = true;
-                rabbitAgent.enabled = false;
+                prefabRoot = interactable.transform;
+            }
+            else if (transform.parent != null && transform.parent.name != "[Living]")
+            {
+                prefabRoot = transform.parent;
             }
 
-            Collider[] colliders = GetComponentsInChildren<Collider>();
+            Debug.Log($"[Rabbit Death] Safe isolated tumble sequence on target container: {prefabRoot.name}");
+
+            // 1. Safe Navigation Fix targeted ONLY at this rabbit instance
+            UnityEngine.AI.NavMeshAgent rabbitAgent = prefabRoot.GetComponentInChildren<UnityEngine.AI.NavMeshAgent>();
+            if (rabbitAgent != null && rabbitAgent.isOnNavMesh)
+            {
+                rabbitAgent.isStopped = true;
+                rabbitAgent.updatePosition = false;     
+                rabbitAgent.updateRotation = false;     
+                rabbitAgent.velocity = Vector3.zero;
+            }
+
+            // 2. Shut down movement script on this single instance
+            MonoBehaviour rabbitMovementScript = prefabRoot.GetComponentInChildren<Rabbit_AI_Movement>() as MonoBehaviour;
+            if (rabbitMovementScript != null)
+            {
+                rabbitMovementScript.enabled = false; 
+            }
+
+            // 3. Disable local colliders so the tiger passes through cleanly
+            Collider[] colliders = prefabRoot.GetComponentsInChildren<Collider>();
             foreach (Collider col in colliders)
             {
                 col.enabled = false;
             }
 
-            // 2. Play the animation clip (it will just handle the mesh visuals, we handle the transform)
+            // 4. Play the animation clip
             if (animator != null)
             {
                 animator.SetBool("isDead", true);
             }
 
-            // 3. CALCULATE THE MOMENTUM DIRECTION
-            // Figure out where the tiger is relative to us
-            Vector3 directionFromAttacker = (transform.position - attacker.position).normalized;
-            directionFromAttacker.y = 0; // Keep it on the flat ground plane
+            // 5. Calculate Motion Tumble Vectors
+            Vector3 directionFromAttacker = (prefabRoot.position - attacker.position).normalized;
+            directionFromAttacker.y = 0; 
 
-            // Determine if we should roll left or right based on the tiger's right paw swing momentum.
-            // Using the cross product tells us if the attacker is facing left or right relative to us.
             Vector3 crossProduct = Vector3.Cross(attacker.forward, directionFromAttacker);
-            
-            // If crossProduct.y is positive, roll right. If negative, roll left.
-            float rollDirection = (crossProduct.y >= 0) ? -90f : 90f;
+            float rollDirection = (crossProduct.y >= 0) ? -90f : 90f; 
 
-            // Define starting and target states
-            Quaternion startRotation = transform.rotation;
-            // Apply the tumble twist onto its local Z axis relative to the blow direction
+            Quaternion startRotation = prefabRoot.rotation;
             Quaternion targetRotation = Quaternion.LookRotation(directionFromAttacker) * Quaternion.Euler(0, 0, rollDirection);
 
-            Vector3 startPosition = transform.position;
-            // Push the rabbit out outward by 1.8 meters along the swing line
-            Vector3 targetPosition = startPosition + (directionFromAttacker * 1.8f); 
+            Vector3 startPosition = prefabRoot.position;
+            Vector3 targetPosition = startPosition + (directionFromAttacker * 2.0f); 
 
-            // 4. LERP LOOP: Smoothly animate the rotation and location translation over time
-            float duration = 0.6f; // How fast the tumble takes to slam down
+            // 6. The smooth isolated lerp loop
+            float duration = 0.5f; 
             float elapsed = 0f;
 
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
                 float t = elapsed / duration;
+                float easeOut = 1f - Mathf.Pow(1f - t, 3);
 
-                // Smooth step curve makes it start fast and slow down on impact
-                float easeOut = 1f - Mathf.Pow(1f - t, 3); 
-
-                transform.rotation = Quaternion.Slerp(startRotation, targetRotation, easeOut);
-                transform.position = Vector3.Lerp(startPosition, targetPosition, easeOut);
+                prefabRoot.rotation = Quaternion.Slerp(startRotation, targetRotation, easeOut);
+                prefabRoot.position = Vector3.Lerp(startPosition, targetPosition, easeOut);
 
                 yield return null;
             }
 
-            // Keep it lying flat on the ground for the remainder of the timer
-            yield return new WaitForSeconds(0.9f);
+            yield return new WaitForSeconds(1.0f);
 
-            // 5. Clean up
+            // 7. Fire UI callback counter and remove ONLY this individual rabbit
             OnRabbitDestroyed?.Invoke();
-            Destroy(gameObject);
+            Destroy(prefabRoot.gameObject);
         }
     }
 }

@@ -52,8 +52,16 @@ public class Villain_AI_Controller : MonoBehaviour
 
     void Update()
     {
-        if (isAttacking) return;
+        // CRITICAL FIX: If the tiger is hitting or roaring, exit IMMEDIATELY.
+        // This blocks the background scan and prevents it from ghost-killing nearby rabbits!
+        if (isAttacking) 
+        {
+            // Force speed parameter to 0 so the agent doesn't slide if pushed by physics during a roar
+            animator.SetFloat("Speed", 0f);
+            return;
+        }
 
+        // 1. Handle detection intervals safely
         scanTimer += Time.deltaTime;
         if (scanTimer >= scanInterval)
         {
@@ -61,52 +69,49 @@ public class Villain_AI_Controller : MonoBehaviour
             FindNearestInteractableRabbit();
         }
 
+        // 2. Handle chasing and attacking logic
         if (currentTargetObject != null)
         {
             if (!hadTargetLastFrame && showDebugLogs)
             {
-                // Debug.Log($"[Tiger AI] Target Acquired → '{currentTargetObject.GetItemName()}'");
+                Debug.Log($"[Tiger AI] Target Acquired → '{currentTargetObject.GetItemName()}'");
                 hadTargetLastFrame = true;
             }
 
             Vector3 targetPosition = currentTargetObject.transform.position;
             
-            // FIX: Flatten vectors to run 2D horizontal distance checks, bypassing pivot height offsets
-            Vector3 flatTigerPos = new Vector3(transform.position.x, 0, transform.position.z);
-            Vector3 flatTargetPos = new Vector3(targetPosition.x, 0, targetPosition.z);
-            float distanceToTarget = Vector3.Distance(flatTigerPos, flatTargetPos);
-
-            // LOG ADDED: This will print every frame while chasing so you can see why it's stuck pushing
-            if (showDebugLogs)
-            {
-                // Debug.Log($"[Tiger Distance Check] Calculated Distance: {distanceToTarget:F2}m | Required Attack Radius: {attackRadius}m");
-            }
-
-            if (distanceToTarget <= attackRadius)
-            {
-                if (showDebugLogs)
-                {
-                    // Debug.Log($"[Tiger Logic Target] Distance condition MET ({distanceToTarget:F2} <= {attackRadius}). Entering Coroutine.");
-                }
-                StartCoroutine(ExecuteAttackSequence(currentTargetObject));
-            }
-            else
+            if (agent.isOnNavMesh)
             {
                 agent.speed = runSpeed;
                 agent.SetDestination(targetPosition);
+            }
+
+            // Check if the agent has arrived at its stopping boundary
+            if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
+            {
+                if (showDebugLogs)
+                {
+                    Debug.Log($"[Tiger Logic] Proximity target met! Initiating strike!");
+                }
+                // This safely sets isAttacking = true inside the coroutine, which blocks this entire Update next frame
+                StartCoroutine(ExecuteAttackSequence(currentTargetObject));
             }
         }
         else
         {
             if (hadTargetLastFrame && showDebugLogs)
             {
-                // Debug.Log("[Tiger AI] Target lost or no rabbits left in the world. Returning to baseline idle loop.");
+                Debug.Log("[Tiger AI] Target lost or no rabbits left. Returning to baseline loop.");
                 hadTargetLastFrame = false;
             }
 
-            agent.speed = walkSpeed;
+            if (agent.isOnNavMesh)
+            {
+                agent.speed = walkSpeed;
+            }
         }
 
+        // Update animation movement parameter
         animator.SetFloat("Speed", agent.velocity.magnitude);
     }
 
@@ -159,47 +164,53 @@ public class Villain_AI_Controller : MonoBehaviour
         }
     }
 
+    // REPLACE your current ExecuteAttackSequence inside Villain_AI_Controller.cs with this:
     IEnumerator ExecuteAttackSequence(InteractableObject target)
     {
+        // 1. IMMEDIATE HARD LOCK out of the loop
         isAttacking = true;
         agent.isStopped = true;
+        agent.velocity = Vector3.zero;
         animator.SetFloat("Speed", 0f);
 
         string rabbitName = target.GetItemName();
+        if (showDebugLogs) Debug.Log($"[Tiger Combat] HARD LOCK active. Striking {rabbitName}...");
 
-        // 1. Fire hit animation sequence using original ActionTrigger parameter
+        // 2. Play Hit Animation
         animator.SetInteger("ActionTrigger", 1);
         yield return new WaitForSeconds(1.0f); 
 
+        // 3. Deliver the fatal hit context safely
         if (target != null)
         {
-            // FIX: Look everywhere inside the target hierarchy to find the health script
             RabbitHealth rabbitHealth = target.GetComponentInChildren<RabbitHealth>();
-            
             if (rabbitHealth != null)
             {
-                // Pass 'transform' (the tiger's transform) so the rabbit calculates the push direction
+                // Pass the tiger's transform so it knows the attack vector direction
                 rabbitHealth.TakeFatalHit(transform);
             }
             else
             {
-                // Clean fallback cleanup if health component is completely missing from the prefab
+                // Fallback if component is entirely missing
                 Destroy(target.gameObject);
-                
-                // Manual fallback to alert the UI system a rabbit was wiped out
                 Rabbits.RabbitHealth.OnRabbitDestroyed?.Invoke();
             }
         }
 
-        // 2. Play roar/sound animation sequence
+        // 4. Play Roar Animation (Tiger is STILL locked out of attacking here)
         animator.SetInteger("ActionTrigger", 2);
         yield return new WaitForSeconds(1.5f);
 
-        // 3. Reset tracking loop parameters cleanly back to baseline loop states
+        // 5. CLEAN UP & RELEASE LOCK
         animator.SetInteger("ActionTrigger", 0);
         currentTargetObject = null;
         hadTargetLastFrame = false; 
+        
+        // Clear out any pending paths so it doesn't instantly snap to a close rabbit
+        agent.ResetPath(); 
         agent.isStopped = false;
+        
+        // Re-enable tracking ONLY after the full sequence is dead and done
         isAttacking = false;
     }
 
