@@ -11,46 +11,42 @@ public class RabbitUIQuantityCounter : MonoBehaviour
 
     private void Awake()
     {
-        // Immediate setup check at launch frame
-        UpdateAliveCounterDisplay();
-    }
-
-    private void OnEnable()
-    {
-        // Listen to the global death broadcast event to update counter metrics dynamically
-        RabbitHealth.OnRabbitDestroyed += UpdateAliveCounterDisplay;
-    }
-
-    private void OnDisable()
-    {
-        // Disconnect listener loops to ensure zero memory leaks
-        RabbitHealth.OnRabbitDestroyed -= UpdateAliveCounterDisplay;
+        Debug.Log("[Rabbit UI Counter] Awake fired. Checking TextMeshPro reference...");
+        ForceWakeUpUI();
     }
 
     void Start()
     {
-        UpdateAliveCounterDisplay();
+        Debug.Log("[Rabbit UI Counter] Start fired. Running baseline check...");
+        ForceWakeUpUI();
     }
 
-    public void UpdateAliveCounterDisplay()
+    void Update()
     {
-        if (aliveCounterText == null)
-        {
-            Debug.LogError("[Rabbit UI Counter] CRITICAL: Text asset reference empty! Bind your component inside the inspector.");
-            return;
-        }
+        // Continuous hammer loop to make absolutely sure nothing else turns it off
+        ForceWakeUpUI();
+    }
 
-        // Scan scene setup for active instances
-        GameObject[] activeRabbits = GameObject.FindGameObjectsWithTag(rabbitTag);
-        
-        // FIX: Removed early 'return' blocking code. Forces text object to wake up immediately.
-        if (!aliveCounterText.gameObject.activeSelf)
+    private void ForceWakeUpUI()
+    {
+        // Condition check: Do we have a TextMeshPro reference assigned?
+        if (aliveCounterText != null)
         {
-            Debug.Log($"[Rabbit UI Counter] Waking up UI text target: '{aliveCounterText.gameObject.name}'");
-            aliveCounterText.gameObject.SetActive(true);
-        }
+            // If it is not active, force it to activate right now!
+            if (!aliveCounterText.gameObject.activeSelf)
+            {
+                Debug.Log($"[Rabbit UI Counter] SUCCESS! Found reference. Force activating GameObject: '{aliveCounterText.gameObject.name}'");
+                aliveCounterText.gameObject.SetActive(true);
+            }
 
-        // Output matches your custom lowercase "X rabbits" formatting structure perfectly
-        aliveCounterText.text = $"{activeRabbits.Length} rabbits";
+            // Run the count query just to fill the text container
+            GameObject[] activeRabbits = GameObject.FindGameObjectsWithTag(rabbitTag);
+            aliveCounterText.text = $"{activeRabbits.Length} rabbits";
+        }
+        else
+        {
+            // CRITICAL LOG: If you see this in your console, the slot in the inspector is completely empty!
+            Debug.LogError("[Rabbit UI Counter] CRITICAL DEADLOCK: 'aliveCounterText' field is NULL! The script has nothing to activate.");
+        }
     }
 }

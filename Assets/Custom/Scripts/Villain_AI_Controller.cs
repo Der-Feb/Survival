@@ -184,7 +184,7 @@ public class Villain_AI_Controller : MonoBehaviour
             else
             {
                 // Clean fallback cleanup if health component is missing
-                if (showDebugLogs) Debug.LogWarning($"[Tiger Combat] RabbitHealth missing on {rabbitName}! Hard destroying GameObject.");
+                Debug.LogError($"[Tiger Combat] Found target {target.name}, but couldn't find a RabbitHealth component on it or its children!");
                 Destroy(target.gameObject);
             }
         }

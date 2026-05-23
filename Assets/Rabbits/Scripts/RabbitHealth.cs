@@ -1,37 +1,56 @@
 using UnityEngine;
-using System;
+using System.Collections;
 
 namespace Rabbits
 {
     public class RabbitHealth : MonoBehaviour
     {
-        // Global event that tells the UI and Tigers a rabbit died
-        public static event Action OnRabbitDestroyed;
+        public static System.Action OnRabbitDestroyed;
 
-        [Header("Disintegration Visuals")]
-        [Tooltip("Assign a simple generic particle system prefab or rock/debris chunk mesh here")]
-        public GameObject disintegrationEffectPrefab; 
-        
-        private bool isDead = false;
+        private Animator animator;
+        private bool isVaporized = false;
+
+        void Awake()
+        {
+            // If the animator is on a child object, find it automatically
+            animator = GetComponentInChildren<Animator>();
+        }
 
         public void TakeFatalHit()
         {
-            if (isDead) return;
-            isDead = true;
+            // FORCE LOG: This will tell us if the tiger successfully triggered this function
+            Debug.Log($"[CRITICAL CHECK] TakeFatalHit() called on {gameObject.name}!");
 
-            // 1. Spawn disintegration/broken bits effect if assigned
-            if (disintegrationEffectPrefab != null)
+            if (isVaporized) return;
+            isVaporized = true;
+
+            StartCoroutine(ExecuteDeathSequence());
+        }
+
+        private IEnumerator ExecuteDeathSequence()
+        {
+            Debug.Log($"[Rabbit Health] '{gameObject.name}' playing isDead animation.");
+
+            if (animator != null)
             {
-                GameObject effect = Instantiate(disintegrationEffectPrefab, transform.position + Vector3.up * 0.2f, Quaternion.identity);
-                Destroy(effect, 2f); // Automatically clean up particle fragments after 2 seconds
+                animator.SetBool("isDead", true);
             }
 
-            // 2. Broadcast the death event to update the UI Counter and redirect chasing Tigers
+            // Shut off ALL colliders on this object and its children so the tiger doesn't push it
+            Collider[] colliders = GetComponentsInChildren<Collider>();
+            foreach (Collider col in colliders)
+            {
+                col.enabled = false;
+            }
+
+            // Wait for the animation to play out
+            yield return new WaitForSeconds(1.5f);
+
+            // Tell the UI to update
             OnRabbitDestroyed?.Invoke();
 
-            // 3. Vaporize the rabbit object from the game world
+            // Destroy the root object
             Destroy(gameObject);
         }
     }
-    
 }
