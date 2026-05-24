@@ -13,6 +13,9 @@ public class SelectionManager : MonoBehaviour
     public InventoryManager playerInventory;
     public Animator playerAnimator;
 
+    [Header("Combat & Bag Configuration")]
+    public Transform bagContainerSource; // Drag your 'Bag' GameObject hierarchy link here!
+
     private PlayerMovement playerMovementScript;
     private bool isPickingUp = false;
 
@@ -23,20 +26,19 @@ public class SelectionManager : MonoBehaviour
             interaction_text = interaction_info_ui.GetComponent<TextMeshProUGUI>();
         }
 
-        // Direct Type Search: Finds the active script in the scene (No tags required!)
+        // Direct Type Search: Finds the active script in the scene
         playerMovementScript = FindAnyObjectByType<PlayerMovement>();
 
         if (playerMovementScript != null)
         {
-            // SAFEGUARD: If you assigned the Soldier Animator in the inspector, KEEP IT!
-            // Do not run an automatic search that could accidentally grab the Main Camera.
+            // SAFEGUARD: Keep manually assigned inspector animators intact
             if (playerAnimator == null)
             {
                 playerAnimator = playerMovementScript.GetComponentInChildren<Animator>();
             }
             else
             {
-                // Sync your manually assigned inspector animator to the movement script
+                // Sync manually assigned animator to the movement script
                 playerMovementScript.animator = playerAnimator;
             }
 
@@ -47,10 +49,6 @@ public class SelectionManager : MonoBehaviour
                                   ?? playerMovementScript.GetComponentInChildren<InventoryManager>();
             }
         }
-
-        // Final verification checks
-        // if (playerMovementScript == null) Debug.LogError("[SELECTION ERROR] PlayerMovement script was not found anywhere in the scene!");
-        // if (playerAnimator == null) Debug.LogError("[SELECTION ERROR] Animator component was not found on the player model structure!");
     }
 
     private void Update()
@@ -64,12 +62,43 @@ public class SelectionManager : MonoBehaviour
             return;
         }
 
+        // DYNAMIC COMBAT CHECK: Verify if there is ANY active item equipped in the active slot right now
+        bool hasActiveItemEquipped = playerInventory != null && playerInventory.activeEquippedItem != null;
+
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
 
         if (Physics.Raycast(ray, out hit))
         {
             var selectionTransform = hit.transform;
+
+            // 1. COMBAT TARGET EVALUATION: Look for the Tiger's exact AI Controller script
+            var tigerTarget = selectionTransform.GetComponent<Villain_AI_Controller>() ?? 
+                              selectionTransform.GetComponentInParent<Villain_AI_Controller>();
+
+            // If we are looking at a valid combat target and holding any active item
+            if (tigerTarget != null && hasActiveItemEquipped)
+            {
+                ItemData equippedItem = playerInventory.activeEquippedItem;
+                float distanceToTiger = hit.distance;
+
+                if (interaction_text != null)
+                {
+                    interaction_text.text = $"{selectionTransform.name}\n<size=70%>({distanceToTiger:F2}m)</size>\n<color=orange>[Press ENTER to Throw {equippedItem.itemName}]</color>";
+                }
+                if (interaction_info_ui != null) interaction_info_ui.SetActive(true);
+
+                // Listen for the Enter / Return key action
+                if (Input.GetKeyDown(KeyCode.Return))
+                {
+                    // CRITICAL: Take a structural Vector3 position snapshot right now so it doesn't track if the tiger moves
+                    Vector3 tigerPositionSnapshot = tigerTarget.transform.position;
+                    StartCoroutine(ExecuteThrowSequence(tigerPositionSnapshot));
+                }
+                return; // Break out early to bypass standard item pickup code loops
+            }
+
+            // 2. RESOURCE PICKUP EVALUATION: (Your original asset gathering logic loop)
             InteractableObject interactable = selectionTransform.GetComponent<InteractableObject>()
                 ?? selectionTransform.GetComponentInParent<InteractableObject>();
 
@@ -108,6 +137,75 @@ public class SelectionManager : MonoBehaviour
         }
     }
 
+    private IEnumerator ExecuteThrowSequence(Vector3 targetPosition)
+    {
+        isPickingUp = true; // Lock internal processing updates
+        if (interaction_info_ui != null) interaction_info_ui.SetActive(false);
+        if (playerMovementScript != null) playerMovementScript.isLocked = true;
+
+        // Smoothly rotate character to face the location snapshot point before throwing
+        if (playerMovementScript != null)
+        {
+            Vector3 faceDirection = (targetPosition - playerMovementScript.transform.position);
+            faceDirection.y = 0; // Lock vertical tipping
+            if (faceDirection.sqrMagnitude > 0.01f)
+            {
+                playerMovementScript.transform.rotation = Quaternion.LookRotation(faceDirection);
+            }
+        }
+
+        // Play the animator parameter trigger we configured together
+        if (playerAnimator != null)
+        {
+            playerAnimator.SetTrigger("Throw");
+        }
+
+        // Wait for the arm animation frames to sync visually before detaching the object
+        yield return new WaitForSeconds(0.35f); 
+
+        // Spawn out of the container bag space dynamically
+        if (bagContainerSource != null && bagContainerSource.childCount > 0 && playerInventory != null)
+        {
+            // Pick up the first visual model child instantiated on the player's back
+            Transform displayedItem = bagContainerSource.GetChild(0);
+            ItemData activeData = playerInventory.activeEquippedItem;
+
+            // Add the projectile physics logic onto the item dynamically and launch it
+            StoneProjectile projectile = displayedItem.gameObject.AddComponent<StoneProjectile>();
+            projectile.LaunchAtPosition(targetPosition, activeData);
+
+            // Cleanly wipe the active item's visual reference out of the Bag container space
+            var equipment = playerMovementScript.GetComponent<PlayerEquipment>() ?? playerMovementScript.GetComponentInChildren<PlayerEquipment>();
+            if (equipment != null) equipment.ClearBagStorage();
+
+            // 1. QUANTITY MANAGEMENT: Reduce item database tracking entries by -1
+            playerInventory.AddToInventory(activeData.itemName, -1);
+            
+            // 2. AUTO-RELOAD SYSTEM: Query how many of this item are still left in the database
+            int remainingQuantity = playerInventory.GetItemCount(activeData.itemName);
+
+            if (remainingQuantity > 0)
+            {
+                // Auto-reload: Place the next matching item model prefab directly back onto the player's back
+                Debug.Log($"[Combat Auto-Reload] Remaining {activeData.itemName} count: {remainingQuantity}. Reloading bag slot container.");
+                if (equipment != null)
+                {
+                    equipment.DisplayItemInBag(activeData);
+                }
+            }
+            else
+            {
+                // Empty ammo: Wipe active equipment state memory clear completely
+                Debug.Log($"[Combat System] Out of {activeData.itemName}s. Unarming active player item reference state slots.");
+                playerInventory.activeEquippedItem = null;
+            }
+        }
+
+        yield return new WaitForSeconds(0.25f); // Finish recovery frames loop safely
+
+        if (playerMovementScript != null) playerMovementScript.isLocked = false;
+        isPickingUp = false;
+    }
     private IEnumerator ExecutePickupSequence(InteractableObject target)
     {
         if (target == null || playerMovementScript == null)
@@ -120,10 +218,8 @@ public class SelectionManager : MonoBehaviour
 
         try
         {
-            // Lock keyboard/WASD inputs safely
             playerMovementScript.isLocked = true;
 
-            // Turn off the item collider so the character doesn't bump or trip over it
             Collider col = target.GetComponentInChildren<Collider>();
             if (col != null) col.enabled = false;
 
@@ -141,17 +237,11 @@ public class SelectionManager : MonoBehaviour
                 {
                     Vector3 moveDirection = (targetPosFlat - playerPosFlat).normalized;
 
-                    // Instantly rotate character smoothly towards resource anchor target
                     Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
                     playerMovementScript.transform.rotation = Quaternion.Slerp(playerMovementScript.transform.rotation, targetRotation, 10f * Time.deltaTime);
 
-                    // Force target manual speed assignments
                     playerMovementScript.currentSpeed = playerMovementScript.baseSpeed;
-
-                    // Physically drive the character controller forward
                     playerMovementScript.controller.Move(moveDirection * playerMovementScript.currentSpeed * Time.deltaTime);
-
-                    // Update manual movement blend tree fields
                     playerMovementScript.UpdateAnimation();
                 }
                 else
@@ -162,25 +252,19 @@ public class SelectionManager : MonoBehaviour
                 yield return null;
             }
 
-            // Halt physical physics parameters immediately on arrival
             playerMovementScript.currentSpeed = 0f;
             
-            // Re-verify the animator reference hasn't shifted dynamically
             if (playerAnimator == null) playerAnimator = playerMovementScript.GetComponentInChildren<Animator>();
 
             if (playerAnimator != null)
             {
                 playerAnimator.SetBool("isMoving", false);
                 playerAnimator.SetBool("isStopped", true);
-                
-                // Triggers the exact pickup parameter string in your Animator layout
                 playerAnimator.SetTrigger("PickUp");
             }
 
-            // Hold code positioning context briefly for the hand-lift animation frames
             yield return new WaitForSeconds(0.3f);
 
-            // Interpolation scale reduction effect
             Vector3 originalScale = target != null ? target.transform.localScale : Vector3.zero;
             float elapsed = 0f;
             float duration = 0.5f; 
@@ -195,7 +279,6 @@ public class SelectionManager : MonoBehaviour
                 yield return null;
             }
 
-            // Save object data records to inventory script
             if (playerInventory != null && target != null)
             {
                 playerInventory.AddToInventory(target.ItemName, 1);
@@ -205,7 +288,6 @@ public class SelectionManager : MonoBehaviour
         }
         finally
         {
-            // Fail-safe protection: ALWAYS restore player control parameters no matter what
             if (playerMovementScript != null) playerMovementScript.isLocked = false;
             isPickingUp = false;
         }

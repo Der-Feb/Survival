@@ -81,23 +81,28 @@ public class InventoryManager : MonoBehaviour
         }
     }
 
-    // This handles switching states cleanly between Activate and Deactivate
     private void ToggleItemActivation(ItemData item)
     {
+        PlayerEquipment equipment = GetComponent<PlayerEquipment>() ?? GetComponentInChildren<PlayerEquipment>();
+
         if (activeEquippedItem == item)
         {
-            // If it's already active, clicking it deactivates it entirely
+            // Deactivating the item selection
             activeEquippedItem = null;
             Debug.Log($"[Inventory] Deactivated: {item.itemName}");
+
+            if (equipment != null) equipment.ClearBagStorage();
         }
         else
         {
-            // Otherwise, make it the new active equipped choice
+            // Activating the item selection
             activeEquippedItem = item;
             Debug.Log($"[Inventory] Activated: {activeEquippedItem.itemName}");
+
+            if (equipment != null) equipment.DisplayItemInBag(item);
         }
 
-        // Force refresh the UI elements to update button text displays instantly
+        // Force refresh visual interface state parameters instantly
         UpdateInventoryUI();
     }
 
