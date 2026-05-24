@@ -17,16 +17,26 @@ public class PlayerMovement : MonoBehaviour
     public float baseSpeed = 6f;
 
     [Header("Physics Settings")]
-    public float gravity = -19.62f; // -9.81 * 2
+    public float gravity = -9.81f * 2f;
     public float jumpHeight = 3f;
     public float groundDistance = 0.4f;
+
+    // Movement Lock Flag for Automated Sequences
+    [HideInInspector] public bool isLocked = false;
 
     private Vector3 verticalVelocity;
     private bool isGrounded;
 
     private float inputX, inputZ;
-
     private float visualAnimSpeed = 1.0f;
+
+    void Start()
+    {
+        if (animator == null)
+        {
+            animator = GetComponentInChildren<Animator>();
+        }
+    }
 
     void Update()
     {
@@ -38,81 +48,81 @@ public class PlayerMovement : MonoBehaviour
             verticalVelocity.y = -2f;
         }
 
-        // 2. Horizontal Movement (Using our Accelerate method)
-        inputX = InputManager.Instance.Horizontal;
-        inputZ = InputManager.Instance.Vertical;
+        // 2. Horizontal Movement (Bypassed if locked)
+        if (!isLocked)
+        {
+            inputX = InputManager.Instance.Horizontal;
+            inputZ = InputManager.Instance.Vertical;
+        }
+        else
+        {
+            inputX = 0f;
+            inputZ = 0f;
+        }
 
         Vector3 move = Vector3.zero;
 
-        if(Mathf.Abs(inputX) > 0.01f || Mathf.Abs(inputZ) > 0.01f)
+        if (Mathf.Abs(inputX) > 0.01f || Mathf.Abs(inputZ) > 0.01f)
         {
             move = Accelerate();
         }
         else
         {
-            currentSpeed = 0f;
+            if (!isLocked)
+            {
+                currentSpeed = 0f;
+            }
             move = Vector3.zero;
         }
 
-        // send the final processed vector to the controller
+        // Send movement vector to controller
         controller.Move(move * Time.deltaTime);
 
-        // 3. Update Animation States
-        UpdateAnimation();
+        // 3. Update Animation States (Only manage auto-animations if not locked)
+        if (!isLocked)
+        {
+            UpdateAnimation();
+        }
 
-        // 4. Jump Logic (Keep your existing code here...)
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        // 4. Jump Logic (Disabled when locked)
+        if (!isLocked && Input.GetButtonDown("Jump") && isGrounded)
         {
             verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
 
-        // 5. Apply Gravity (Keep your existing code here...)
+        // 5. Apply Gravity
         verticalVelocity.y += gravity * Time.deltaTime;
         controller.Move(verticalVelocity * Time.deltaTime);
     }
 
-    // This method calculates the speed build-up and returns the movement vector
     Vector3 Accelerate()
     {
-        // Calculate direction relative to where the player is facing
         Vector3 inputDir = transform.right * inputX + transform.forward * inputZ;
 
-        // Check if the player is actually trying to move
         if (Input.GetKey(KeyCode.RightControl))
         {
-            // v = u + at
             currentSpeed += acceleration * Time.deltaTime;
             currentSpeed = Mathf.Min(currentSpeed, maxSpeed);
         }
         else
         {
-            // KEY IS UP: Instead of snapping, smoothly decelerate back down to baseSpeed
-            // 30f here acts as your deceleration rate. You can tweak this number higher or lower!
             currentSpeed = Mathf.MoveTowards(currentSpeed, baseSpeed, 30f * Time.deltaTime);
         }
 
         UpdateAnimation();
-
-        // Return the direction multiplied by our calculated speed
-        // .normalized ensures diagonal movement isn't faster than forward movement
         return inputDir.normalized * currentSpeed;
     }
-    void UpdateAnimation()
-    {
-        if(animator == null) return;
 
-        if((Mathf.Abs(inputX) > 0.1f || Mathf.Abs(inputZ) > 0.1f) && currentSpeed > 0.1f)
+    public void UpdateAnimation()
+    {
+        if (animator == null) return;
+
+        if ((Mathf.Abs(inputX) > 0.1f || Mathf.Abs(inputZ) > 0.1f || isLocked) && currentSpeed > 0.1f)
         {
             animator.SetBool("isMoving", true);
             animator.SetBool("isStopped", false);
 
-            /// Calculate where the animation speed WANT to be based on physical speed
             float targetAnimSpeed = Mathf.Clamp(currentSpeed / maxSpeed, 0.5f, 1.2f);
-
-            /**
-             * SMOOTH STEP: Instead of snapping, smoothly drift toward the target speed over time
-             * 2f controls how fast the animation transitions. Lower = smoother/slower adaptation.
-            */
             visualAnimSpeed = Mathf.MoveTowards(visualAnimSpeed, targetAnimSpeed, 2f * Time.deltaTime);
             animator.speed = visualAnimSpeed;
         }
@@ -121,7 +131,6 @@ public class PlayerMovement : MonoBehaviour
             animator.SetBool("isMoving", false);
             animator.SetBool("isStopped", true);
 
-            // Smoothly return the animation clock back to a normal 1.0 speed when idling
             visualAnimSpeed = Mathf.MoveTowards(visualAnimSpeed, 1.0f, 4f * Time.deltaTime);
             animator.speed = visualAnimSpeed;
         }
