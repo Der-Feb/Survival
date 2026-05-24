@@ -14,3 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemName: Stone
   itemIcon: {fileID: 21300000, guid: b77fd090e643e6c4386e9204103d990e, type: 3}
+  itemPrefab: {fileID: 4874367222305082774, guid: 9f1468c423fda7e4988d5a9473b17de1, type: 3}
+  equippedScale: {x: 1, y: 1, z: 1}

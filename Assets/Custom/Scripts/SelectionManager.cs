@@ -154,39 +154,46 @@ public class SelectionManager : MonoBehaviour
             }
         }
 
-        // Play the animator parameter trigger we configured together
+        // Play the animator parameter trigger
         if (playerAnimator != null)
         {
             playerAnimator.SetTrigger("Throw");
         }
 
-        // Wait for the arm animation frames to sync visually before detaching the object
+        // Wait for the arm animation frames to sync visually before spawning the projectile
         yield return new WaitForSeconds(0.35f); 
 
-        // Spawn out of the container bag space dynamically
-        if (bagContainerSource != null && bagContainerSource.childCount > 0 && playerInventory != null)
+        if (bagContainerSource != null && playerInventory != null && playerInventory.activeEquippedItem != null)
         {
-            // Pick up the first visual model child instantiated on the player's back
-            Transform displayedItem = bagContainerSource.GetChild(0);
             ItemData activeData = playerInventory.activeEquippedItem;
 
-            // Add the projectile physics logic onto the item dynamically and launch it
-            StoneProjectile projectile = displayedItem.gameObject.AddComponent<StoneProjectile>();
-            projectile.LaunchAtPosition(targetPosition, activeData);
+            if (activeData.itemPrefab != null)
+            {
+                // 1. VISUAL FIX: Spawn a brand new copy directly from the original Project Prefab asset
+                // We spawn it at the bag's current world position, but with standard world rotation
+                GameObject flyingProjectile = Instantiate(activeData.itemPrefab, bagContainerSource.position, Quaternion.identity);
 
-            // Cleanly wipe the active item's visual reference out of the Bag container space
+                // FORCE ORIGINAL SIZE: Make sure it ignores any shrunk bag settings and uses its true world scale
+                flyingProjectile.transform.localScale = activeData.itemPrefab.transform.localScale;
+
+                // 2. LAUNCH: Attach the projectile logic to this fresh world-sized clone
+                StoneProjectile projectile = flyingProjectile.AddComponent<StoneProjectile>();
+                projectile.LaunchAtPosition(targetPosition, activeData);
+            }
+
+            // Cleanly wipe the old visual item representation out of the back Bag container instantly
             var equipment = playerMovementScript.GetComponent<PlayerEquipment>() ?? playerMovementScript.GetComponentInChildren<PlayerEquipment>();
             if (equipment != null) equipment.ClearBagStorage();
 
-            // 1. QUANTITY MANAGEMENT: Reduce item database tracking entries by -1
+            // QUANTITY MANAGEMENT: Reduce item database tracking entries by -1
             playerInventory.AddToInventory(activeData.itemName, -1);
             
-            // 2. AUTO-RELOAD SYSTEM: Query how many of this item are still left in the database
+            // AUTO-RELOAD SYSTEM: Query how many of this item are still left in the database
             int remainingQuantity = playerInventory.GetItemCount(activeData.itemName);
 
             if (remainingQuantity > 0)
             {
-                // Auto-reload: Place the next matching item model prefab directly back onto the player's back
+                // Auto-reload the next item visually back into the bag slot
                 Debug.Log($"[Combat Auto-Reload] Remaining {activeData.itemName} count: {remainingQuantity}. Reloading bag slot container.");
                 if (equipment != null)
                 {
@@ -195,7 +202,7 @@ public class SelectionManager : MonoBehaviour
             }
             else
             {
-                // Empty ammo: Wipe active equipment state memory clear completely
+                // Empty ammo: Clear active slot memory
                 Debug.Log($"[Combat System] Out of {activeData.itemName}s. Unarming active player item reference state slots.");
                 playerInventory.activeEquippedItem = null;
             }
@@ -206,6 +213,7 @@ public class SelectionManager : MonoBehaviour
         if (playerMovementScript != null) playerMovementScript.isLocked = false;
         isPickingUp = false;
     }
+
     private IEnumerator ExecutePickupSequence(InteractableObject target)
     {
         if (target == null || playerMovementScript == null)

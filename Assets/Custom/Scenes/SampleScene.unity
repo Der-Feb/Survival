@@ -1068,6 +1068,7 @@ GameObject:
   - component: {fileID: 199176591}
   - component: {fileID: 199176593}
   - component: {fileID: 199176594}
+  - component: {fileID: 199176595}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1116,6 +1117,7 @@ Transform:
   - {fileID: 968624233}
   - {fileID: 330585546}
   - {fileID: 973104861}
+  - {fileID: 1846953796}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 83.951, z: 0}
 --- !u!114 &199176593
@@ -1144,6 +1146,7 @@ MonoBehaviour:
   gravity: -35
   jumpHeight: 3
   groundDistance: 0.4
+  isLocked: 0
 --- !u!114 &199176594
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1162,6 +1165,19 @@ MonoBehaviour:
   itemDatabase:
   - {fileID: 11400000, guid: 1581acf0f087a524da142220c3e925df, type: 2}
   activeEquippedItem: {fileID: 0}
+--- !u!114 &199176595
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 199176590}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37126abbbd4206543ba115e4ea299c77, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerEquipment
+  bagContainer: {fileID: 1846953796}
 --- !u!4 &201672739 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4803512829787638, guid: 5219ccfa3b129f645bfb105ac244e8f5, type: 3}
@@ -2474,6 +2490,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 463725946}
+  - component: {fileID: 463725947}
   m_Layer: 0
   m_Name: SpawnPos_1
   m_TagString: Untagged
@@ -2496,6 +2513,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1199555226}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &463725947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 463725945}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce7a83dd4e3c1864baf4165c418fe680, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemySpawner
+  villainPrefab: {fileID: 1103019080430449189, guid: d9efb55b9e093db4db070395338d791b, type: 3}
+  villainTag: Tiger
+  spawnPoints:
+  - {fileID: 844746751}
+  maxActiveVillains: 1
+  spawnInterval: 5
 --- !u!4 &476116007 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4874367222304919990, guid: 9f1468c423fda7e4988d5a9473b17de1, type: 3}
@@ -4648,7 +4683,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 844746751}
-  - component: {fileID: 844746752}
   m_Layer: 0
   m_Name: SpawnPos_2
   m_TagString: Untagged
@@ -4671,24 +4705,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1199555226}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &844746752
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 844746750}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ce7a83dd4e3c1864baf4165c418fe680, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemySpawner
-  villainPrefab: {fileID: 1103019080430449189, guid: d9efb55b9e093db4db070395338d791b, type: 3}
-  villainTag: Tiger
-  spawnPoints:
-  - {fileID: 844746751}
-  maxActiveVillains: 1
-  spawnInterval: 5
 --- !u!4 &848268120 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4356059539544546, guid: 41282c525de09854e95ed5d9f9c17fb5, type: 3}
@@ -5637,7 +5653,8 @@ MonoBehaviour:
   interaction_info_ui: {fileID: 1774005369}
   focusScript: {fileID: 330585549}
   playerInventory: {fileID: 199176594}
-  playerAnimator: {fileID: 0}
+  playerAnimator: {fileID: 973104862}
+  bagContainerSource: {fileID: 1846953796}
 --- !u!4 &1101412635
 Transform:
   m_ObjectHideFlags: 0
@@ -9714,6 +9731,37 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 47356d574ebc3a545bfaef26eb02a2ea, type: 3}
+--- !u!1 &1846953795
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1846953796}
+  m_Layer: 0
+  m_Name: Bag
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1846953796
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1846953795}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.53, z: -0.92}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 199176592}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1869424531
 GameObject:
   m_ObjectHideFlags: 0
