@@ -49,8 +49,8 @@ public class SelectionManager : MonoBehaviour
         }
 
         // Final verification checks
-        if (playerMovementScript == null) Debug.LogError("[SELECTION ERROR] PlayerMovement script was not found anywhere in the scene!");
-        if (playerAnimator == null) Debug.LogError("[SELECTION ERROR] Animator component was not found on the player model structure!");
+        // if (playerMovementScript == null) Debug.LogError("[SELECTION ERROR] PlayerMovement script was not found anywhere in the scene!");
+        // if (playerAnimator == null) Debug.LogError("[SELECTION ERROR] Animator component was not found on the player model structure!");
     }
 
     private void Update()

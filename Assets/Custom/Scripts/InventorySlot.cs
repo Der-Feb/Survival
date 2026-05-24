@@ -31,7 +31,6 @@ public class InventorySlot : MonoBehaviour
         else
         {
             toggleButtonText.text = "Activate";
-            toggleButtonText.color = Color.green;
         }
 
         // Set up the button click event listener safely

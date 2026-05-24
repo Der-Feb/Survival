@@ -12,8 +12,6 @@ public class Villain_AI_Controller : MonoBehaviour
 
     [Header("Detection Setup")]
     public string rabbitTag = "Rabbit";
-    
-    // INCREASED: Expanded radius to comfortably clear physical boundaries of colliding capsules
     public float attackRadius = 3.5f; 
     public float scanInterval = 0.3f; 
 
@@ -29,35 +27,31 @@ public class Villain_AI_Controller : MonoBehaviour
     private bool hadTargetLastFrame = false;
     private float scanTimer = 0f;
 
+    // PERFORMANCE FIX: Cache Animator Hashes to avoid expensive string lookups under the hood
+    private static readonly int SpeedHash = Animator.StringToHash("Speed");
+    private static readonly int ActionTriggerHash = Animator.StringToHash("ActionTrigger");
+
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
         agent.speed = walkSpeed;
 
-        // FIX: Configure stopping distance dynamically to prevent physical collision push locks
+        // Configure stopping distance dynamically to prevent physical collision push locks
         agent.stoppingDistance = attackRadius - 0.4f;
-
-        if (showDebugLogs)
-        {
-            // Debug.Log($"[Tiger Start] Initialized. attackRadius: {attackRadius} | Generated stoppingDistance: {agent.stoppingDistance}");
-        }
 
         if (!agent.isOnNavMesh && showDebugLogs)
         {
-            
-            // Debug.LogError($"[Tiger] CRITICAL: {gameObject.name} is NOT on a baked NavMesh!");
+            Debug.LogError($"[Tiger] CRITICAL: {gameObject.name} is NOT on a baked NavMesh!");
         }
     }
 
     void Update()
     {
-        // CRITICAL FIX: If the tiger is hitting or roaring, exit IMMEDIATELY.
-        // This blocks the background scan and prevents it from ghost-killing nearby rabbits!
+        // If the tiger is hitting or roaring, exit IMMEDIATELY.
         if (isAttacking) 
         {
-            // Force speed parameter to 0 so the agent doesn't slide if pushed by physics during a roar
-            animator.SetFloat("Speed", 0f);
+            animator.SetFloat(SpeedHash, 0f);
             return;
         }
 
@@ -89,11 +83,11 @@ public class Villain_AI_Controller : MonoBehaviour
             // Check if the agent has arrived at its stopping boundary
             if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
             {
-                if (showDebugLogs)
-                {
-                    Debug.Log($"[Tiger Logic] Proximity target met! Initiating strike!");
-                }
-                // This safely sets isAttacking = true inside the coroutine, which blocks this entire Update next frame
+                if (showDebugLogs) Debug.Log($"[Tiger Logic] Proximity target met! Initiating strike!");
+                
+                // CRITICAL BUG FIX: Lock immediately on this frame before starting the coroutine 
+                // to prevent multiple overlapping coroutines from firing on consecutive frames.
+                isAttacking = true; 
                 StartCoroutine(ExecuteAttackSequence(currentTargetObject));
             }
         }
@@ -111,12 +105,13 @@ public class Villain_AI_Controller : MonoBehaviour
             }
         }
 
-        // Update animation movement parameter
-        animator.SetFloat("Speed", agent.velocity.magnitude);
+        // Update animation movement parameter using high-performance hash
+        animator.SetFloat(SpeedHash, agent.velocity.magnitude);
     }
 
     void FindNearestInteractableRabbit()
     {
+        // NOTE: For ultimate scalability, replace this line with a call to a dedicated spawn manager
         GameObject[] rawRabbits = GameObject.FindGameObjectsWithTag(rabbitTag);
         
         if (currentTargetObject != null)
@@ -131,14 +126,9 @@ public class Villain_AI_Controller : MonoBehaviour
                 }
             }
 
-            if (targetStillExists)
-            {
-                return; 
-            }
-            else
-            {
-                currentTargetObject = null;
-            }
+            if (targetStillExists) return; 
+            
+            currentTargetObject = null;
         }
 
         float shortestDistance = Mathf.Infinity;
@@ -164,53 +154,48 @@ public class Villain_AI_Controller : MonoBehaviour
         }
     }
 
-    // REPLACE your current ExecuteAttackSequence inside Villain_AI_Controller.cs with this:
     IEnumerator ExecuteAttackSequence(InteractableObject target)
     {
-        // 1. IMMEDIATE HARD LOCK out of the loop
-        isAttacking = true;
+        // HARD LOCK out of tracking loop
         agent.isStopped = true;
         agent.velocity = Vector3.zero;
-        animator.SetFloat("Speed", 0f);
+        animator.SetFloat(SpeedHash, 0f);
 
-        string rabbitName = target.GetItemName();
+        string rabbitName = target != null ? target.GetItemName() : "Unknown Target";
         if (showDebugLogs) Debug.Log($"[Tiger Combat] HARD LOCK active. Striking {rabbitName}...");
 
-        // 2. Play Hit Animation
-        animator.SetInteger("ActionTrigger", 1);
+        // Play Hit Animation using int hash
+        animator.SetInteger(ActionTriggerHash, 1);
         yield return new WaitForSeconds(1.0f); 
 
-        // 3. Deliver the fatal hit context safely
+        // Deliver the fatal hit context safely
         if (target != null)
         {
             RabbitHealth rabbitHealth = target.GetComponentInChildren<RabbitHealth>();
             if (rabbitHealth != null)
             {
-                // Pass the tiger's transform so it knows the attack vector direction
                 rabbitHealth.TakeFatalHit(transform);
             }
             else
             {
-                // Fallback if component is entirely missing
                 Destroy(target.gameObject);
                 Rabbits.RabbitHealth.OnRabbitDestroyed?.Invoke();
             }
         }
 
-        // 4. Play Roar Animation (Tiger is STILL locked out of attacking here)
-        animator.SetInteger("ActionTrigger", 2);
+        // Play Roar Animation 
+        animator.SetInteger(ActionTriggerHash, 2);
         yield return new WaitForSeconds(1.5f);
 
-        // 5. CLEAN UP & RELEASE LOCK
-        animator.SetInteger("ActionTrigger", 0);
+        // CLEAN UP & RELEASE LOCK
+        animator.SetInteger(ActionTriggerHash, 0);
         currentTargetObject = null;
         hadTargetLastFrame = false; 
         
-        // Clear out any pending paths so it doesn't instantly snap to a close rabbit
         agent.ResetPath(); 
         agent.isStopped = false;
         
-        // Re-enable tracking ONLY after the full sequence is dead and done
+        // Re-enable tracking safely at the end of the sequence
         isAttacking = false;
     }
 
