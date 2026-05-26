@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using TMPro;
-using Tiger; // 1. NAMESPACE REFERENCE
+using Tiger; 
 
 public class SelectionManager : MonoBehaviour
 {
@@ -17,10 +17,11 @@ public class SelectionManager : MonoBehaviour
     [Header("Combat & Bag Configuration")]
     public Transform bagContainerSource;
 
+    [Header("Vision Configuration")]
+    public Transform playerEyeAnchor; // Assign your look-anchor transform here!
+
     private PlayerMovement playerMovementScript;
     private bool isPickingUp = false;
-    
-    // 2. TRACKING VARIABLE FIELD
     private VillainUIController currentFocusedTigerUI;
 
     private void Start()
@@ -53,31 +54,53 @@ public class SelectionManager : MonoBehaviour
 
     private void Update()
     {
+        // 1. Maintain your state lock so movement loop completely halts
         if (isPickingUp) return;
 
-        if (focusScript != null && !focusScript.isFocusing)
+        bool hasActiveItemEquipped = playerInventory != null && playerInventory.activeEquippedItem != null;
+        bool isCurrentlyFocusing = focusScript != null && focusScript.isFocusing;
+
+        // 🎯 TARGETING MATRIX: Switch ray origins depending on state
+        Ray ray;
+        if (isCurrentlyFocusing)
         {
-            if (interaction_info_ui != null) interaction_info_ui.SetActive(false);
-            ClearCurrentFocusedTiger(); // Safely clear UI if focus script breaks look window
+            ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        }
+        else if (playerEyeAnchor != null)
+        {
+            ray = new Ray(playerEyeAnchor.position, playerEyeAnchor.forward);
+        }
+        else
+        {
+            ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        }
+
+        // Support free-look hip-firing without requiring UI tracking focus
+        if (!isCurrentlyFocusing && hasActiveItemEquipped && Input.GetKeyDown(KeyCode.Return))
+        {
+            Vector3 blindPoint = ray.origin + (ray.direction * 25f);
+            if (Physics.Raycast(ray, out RaycastHit blindHit, 40f)) blindPoint = blindHit.point;
+            StartCoroutine(ExecuteThrowSequence(blindPoint));
             return;
         }
 
-        bool hasActiveItemEquipped = playerInventory != null && playerInventory.activeEquippedItem != null;
+        if (!isCurrentlyFocusing)
+        {
+            if (interaction_info_ui != null) interaction_info_ui.SetActive(false);
+            ClearCurrentFocusedTiger();
+            return;
+        }
 
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
-
         if (Physics.Raycast(ray, out hit))
         {
             var selectionTransform = hit.transform;
 
-            // 3. TARGET FOCUS AND DISPLAY DETECTION BLOCK
             VillainUIController tigerUI = selectionTransform.GetComponent<VillainUIController>() ?? 
                                           selectionTransform.GetComponentInParent<VillainUIController>();
 
             if (tigerUI != null)
             {
-                // If switching focus to a brand new target, disable the old canvas overlay first
                 if (currentFocusedTigerUI != null && currentFocusedTigerUI != tigerUI)
                 {
                     currentFocusedTigerUI.SetHealthBarVisible(false);
@@ -88,11 +111,9 @@ public class SelectionManager : MonoBehaviour
             }
             else
             {
-                // Cursor moved to a regular object layer (Ground, tree, rocks) -> Turn off bar
                 ClearCurrentFocusedTiger();
             }
 
-            // COMBAT TARGET EVALUATION: Keep your original input checking loop running seamlessly
             var tigerTarget = selectionTransform.GetComponent<Villain_AI_Controller>() ?? 
                               selectionTransform.GetComponentInParent<Villain_AI_Controller>();
 
@@ -115,7 +136,6 @@ public class SelectionManager : MonoBehaviour
                 return; 
             }
 
-            // RESOURCE PICKUP EVALUATION
             InteractableObject interactable = selectionTransform.GetComponent<InteractableObject>()
                 ?? selectionTransform.GetComponentInParent<InteractableObject>();
 
@@ -150,13 +170,11 @@ public class SelectionManager : MonoBehaviour
         }
         else
         {
-            // Raycast hit nothing but empty sky coordinates -> Hide the bar safely
             ClearCurrentFocusedTiger();
             if (interaction_info_ui != null) CustomActivationTracker(false);
         }
     }
 
-    // CLEANUP HELPER METHOD: Turns off active UI visibility states cleanly
     private void ClearCurrentFocusedTiger()
     {
         if (currentFocusedTigerUI != null)
@@ -216,15 +234,10 @@ public class SelectionManager : MonoBehaviour
 
             if (remainingQuantity > 0)
             {
-                Debug.Log($"[Combat Auto-Reload] Remaining {activeData.itemName} count: {remainingQuantity}. Reloading bag slot container.");
-                if (equipment != null)
-                {
-                    equipment.DisplayItemInBag(activeData);
-                }
+                if (equipment != null) equipment.DisplayItemInBag(activeData);
             }
             else
             {
-                Debug.Log($"[Combat System] Out of {activeData.itemName}s. Unarming active player item reference state slots.");
                 playerInventory.activeEquippedItem = null;
             }
         }
@@ -278,14 +291,18 @@ public class SelectionManager : MonoBehaviour
             {
                 playerAnimator.SetBool("isMoving", false);
                 playerAnimator.SetBool("isStopped", true);
+                
+                // Clear any structural floats keeping your walk tree active
+                playerAnimator.SetFloat("Speed", 0f);
                 playerAnimator.SetTrigger("PickUp");
             }
 
-            yield return new WaitForSeconds(0.3f);
+            // Let the animation complete bending down
+            yield return new WaitForSeconds(0.45f);
 
             Vector3 originalScale = target != null ? target.transform.localScale : Vector3.zero;
             float elapsed = 0f;
-            float duration = 0.5f; 
+            float duration = 0.4f; 
 
             while (elapsed < duration)
             {

@@ -12,4 +12,5 @@ public class ItemData : ScriptableObject
 
     [Header("Projectile Settings")]
     public float throwSpeed = 22f;
+    public float throwDamage = 25f;
 }

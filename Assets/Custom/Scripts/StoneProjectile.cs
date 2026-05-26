@@ -1,22 +1,24 @@
 using UnityEngine;
+using Tiger; 
 
 public class StoneProjectile : MonoBehaviour
 {
     private Vector3 targetImpactPoint;
-    private float flightSpeed = 22f; // This will now get overridden dynamically
+    private float flightSpeed = 22f; 
     private float hitThreshold = 1.5f;
     private bool isInitialized = false;
     private ItemData thrownItemData;
+    private float impactDamage = 25f; 
 
     public void LaunchAtPosition(Vector3 targetPosition, ItemData data)
     {
         targetImpactPoint = targetPosition + Vector3.up * 1.0f;
         thrownItemData = data;
         
-        // DYNAMIC SPEED SYNC: Pull the speed variable value directly from your asset configurations!
         if (data != null)
         {
             flightSpeed = data.throwSpeed;
+            impactDamage = data.throwDamage; 
         }
         
         transform.SetParent(null); 
@@ -27,7 +29,6 @@ public class StoneProjectile : MonoBehaviour
     {
         if (!isInitialized) return;
 
-        // Fly towards destination using the customized item speed
         transform.position = Vector3.MoveTowards(transform.position, targetImpactPoint, flightSpeed * Time.deltaTime);
         transform.Rotate(Vector3.right * 360f * Time.deltaTime, Space.Self);
 
@@ -39,27 +40,25 @@ public class StoneProjectile : MonoBehaviour
 
     private void RegisterImpact()
     {
-        Debug.Log($"[Projectile Log] {thrownItemData.itemName} landed at: {transform.position} traveling at speed: {flightSpeed}");
+        isInitialized = false;
+        Debug.Log($"[Combat Log] Thrown projectile impacted at target coordinates: {transform.position}");
 
-        // Check if the Tiger was inside the blast zone
         Collider[] hitColliders = Physics.OverlapSphere(transform.position, 2.5f);
         foreach (var col in hitColliders)
         {
-            if (col.GetComponent<Villain_AI_Controller>() != null || col.GetComponentInParent<Villain_AI_Controller>() != null)
+            VillainHealth tigerHealth = col.GetComponent<VillainHealth>() ?? col.GetComponentInParent<VillainHealth>();
+            if (tigerHealth != null)
             {
-                Debug.Log("Success: The tiger is hit!");
-                break;
+                tigerHealth.TakeDamage(impactDamage);
+                break; 
             }
         }
 
-        MakeItemPickableAgain();
+        ResetAsGroundLoot();
     }
 
-    private void MakeItemPickableAgain()
+    private void ResetAsGroundLoot()
     {
-        isInitialized = false; 
-
-        // Drop the stone cleanly to the floor level
         RaycastHit groundHit;
         if (Physics.Raycast(transform.position, Vector3.down, out groundHit, 15f))
         {
@@ -72,10 +71,7 @@ public class StoneProjectile : MonoBehaviour
         if (col != null) col.enabled = true;
 
         InteractableObject interactable = GetComponent<InteractableObject>() ?? GetComponentInChildren<InteractableObject>();
-        if (interactable != null)
-        {
-            interactable.enabled = true;
-        }
+        if (interactable != null) interactable.enabled = true;
 
         Destroy(this); 
     }
