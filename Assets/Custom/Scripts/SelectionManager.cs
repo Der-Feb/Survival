@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using TMPro;
-using Tiger; 
+using Tiger;
 
 public class SelectionManager : MonoBehaviour
 {
@@ -18,11 +18,20 @@ public class SelectionManager : MonoBehaviour
     public Transform bagContainerSource;
 
     [Header("Vision Configuration")]
-    public Transform playerEyeAnchor; // Assign your look-anchor transform here!
+    public Transform playerEyeAnchor;
+
+    [Header("Throw Charge Settings")]
+    [SerializeField] private float minThrowDistance = 5f;
+    [SerializeField] private float maxThrowDistance = 40f;
+    [SerializeField] private float maxChargeTime = 1.5f; // Max strength reached at 1.5 seconds
 
     private PlayerMovement playerMovementScript;
     private bool isPickingUp = false;
     private VillainUIController currentFocusedTigerUI;
+
+    // Charge Tracking Flags
+    private float enterPressStartTime;
+    private bool isChargingThrow = false;
 
     private void Start()
     {
@@ -46,7 +55,7 @@ public class SelectionManager : MonoBehaviour
 
             if (playerInventory == null)
             {
-                playerInventory = playerMovementScript.GetComponent<InventoryManager>() 
+                playerInventory = playerMovementScript.GetComponent<InventoryManager>()
                                   ?? playerMovementScript.GetComponentInChildren<InventoryManager>();
             }
         }
@@ -54,13 +63,12 @@ public class SelectionManager : MonoBehaviour
 
     private void Update()
     {
-        // 1. Maintain your state lock so movement loop completely halts
         if (isPickingUp) return;
 
         bool hasActiveItemEquipped = playerInventory != null && playerInventory.activeEquippedItem != null;
         bool isCurrentlyFocusing = focusScript != null && focusScript.isFocusing;
 
-        // 🎯 TARGETING MATRIX: Switch ray origins depending on state
+        // 🎯 TARGETING MATRIX
         Ray ray;
         if (isCurrentlyFocusing)
         {
@@ -75,14 +83,69 @@ public class SelectionManager : MonoBehaviour
             ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         }
 
-        // Support free-look hip-firing without requiring UI tracking focus
-        if (!isCurrentlyFocusing && hasActiveItemEquipped && Input.GetKeyDown(KeyCode.Return))
+        // ========================================================
+        // 🔋 CHARGE DETECTION LOOP (COMBAT TRACKING)
+        // ========================================================
+        if (hasActiveItemEquipped)
         {
-            Vector3 blindPoint = ray.origin + (ray.direction * 25f);
-            if (Physics.Raycast(ray, out RaycastHit blindHit, 40f)) blindPoint = blindHit.point;
-            StartCoroutine(ExecuteThrowSequence(blindPoint));
-            return;
+            // 1. Initial Press Down: Start charging
+            if (Input.GetKeyDown(KeyCode.Return))
+            {
+                enterPressStartTime = Time.time;
+                isChargingThrow = true;
+            }
+
+            // 2. Continuous Holding: Update UI / Visual calculations
+            if (isChargingThrow && Input.GetKey(KeyCode.Return))
+            {
+                float holdDuration = Time.time - enterPressStartTime;
+                float chargeRatio = Mathf.Clamp01(holdDuration / maxChargeTime);
+                float currentThrowDistance = Mathf.Lerp(minThrowDistance, maxThrowDistance, chargeRatio);
+
+                if (interaction_text != null)
+                {
+                    interaction_text.text = $"{playerInventory.activeEquippedItem.itemName}\n<color=orange>Charging: {chargeRatio * 100f:F0}%</color>\nDistance: {currentThrowDistance:F1}m";
+                    if (interaction_info_ui != null) interaction_info_ui.SetActive(true);
+                }
+            }
+
+            // 3. Release Key: Execute calculated throw calculations
+            if (isChargingThrow && Input.GetKeyUp(KeyCode.Return))
+            {
+                isChargingThrow = false;
+                float totalHoldTime = Time.time - enterPressStartTime;
+                float finalChargeRatio = Mathf.Clamp01(totalHoldTime / maxChargeTime);
+
+                Vector3 targetPoint;
+
+                // Handle combat target override if focusing directly on an enemy element
+                RaycastHit targetHit;
+                if (Physics.Raycast(ray, out targetHit, maxThrowDistance) &&
+                    (targetHit.transform.GetComponent<Villain_AI_Controller>() != null || targetHit.transform.GetComponentInParent<Villain_AI_Controller>() != null))
+                {
+                    // Locked targeted tracking throw
+                    targetPoint = targetHit.point;
+                }
+                else
+                {
+                    // Blind free-throw calculation scaled entirely on charge values
+                    float calculatedDistance = Mathf.Lerp(minThrowDistance, maxThrowDistance, finalChargeRatio);
+                    targetPoint = ray.origin + (ray.direction * calculatedDistance);
+
+                    // Drop point down to floor collision terrain if ray hits intermediate obstacles
+                    if (Physics.Raycast(ray, out RaycastHit blindHit, calculatedDistance))
+                    {
+                        targetPoint = blindHit.point;
+                    }
+                }
+
+                StartCoroutine(ExecuteThrowSequence(targetPoint, finalChargeRatio));
+                return;
+            }
         }
+
+        // Stop processing layout if running blind throws
+        if (isChargingThrow) return;
 
         if (!isCurrentlyFocusing)
         {
@@ -96,7 +159,7 @@ public class SelectionManager : MonoBehaviour
         {
             var selectionTransform = hit.transform;
 
-            VillainUIController tigerUI = selectionTransform.GetComponent<VillainUIController>() ?? 
+            VillainUIController tigerUI = selectionTransform.GetComponent<VillainUIController>() ??
                                           selectionTransform.GetComponentInParent<VillainUIController>();
 
             if (tigerUI != null)
@@ -114,7 +177,7 @@ public class SelectionManager : MonoBehaviour
                 ClearCurrentFocusedTiger();
             }
 
-            var tigerTarget = selectionTransform.GetComponent<Villain_AI_Controller>() ?? 
+            var tigerTarget = selectionTransform.GetComponent<Villain_AI_Controller>() ??
                               selectionTransform.GetComponentInParent<Villain_AI_Controller>();
 
             if (tigerTarget != null && hasActiveItemEquipped)
@@ -124,16 +187,10 @@ public class SelectionManager : MonoBehaviour
 
                 if (interaction_text != null)
                 {
-                    interaction_text.text = $"{selectionTransform.name}\n<size=70%>({distanceToTiger:F2}m)</size>\n<color=orange>[Press ENTER to Throw {equippedItem.itemName}]</color>";
+                    interaction_text.text = $"{selectionTransform.name}\n<size=70%>({distanceToTiger:F2}m)</size>\n<color=yellow>[Hold ENTER to Charge Throw]</color>";
                 }
                 if (interaction_info_ui != null) interaction_info_ui.SetActive(true);
-
-                if (Input.GetKeyDown(KeyCode.Return))
-                {
-                    Vector3 tigerPositionSnapshot = tigerTarget.transform.position;
-                    StartCoroutine(ExecuteThrowSequence(tigerPositionSnapshot));
-                }
-                return; 
+                return;
             }
 
             InteractableObject interactable = selectionTransform.GetComponent<InteractableObject>()
@@ -147,7 +204,7 @@ public class SelectionManager : MonoBehaviour
 
             float distanceHit = hit.distance;
             string itemName = interactable.GetItemName();
-            
+
             if (interaction_text != null)
             {
                 if (interactable.storable && distanceHit <= 10.0f)
@@ -189,16 +246,17 @@ public class SelectionManager : MonoBehaviour
         interaction_info_ui.SetActive(state);
     }
 
-    private IEnumerator ExecuteThrowSequence(Vector3 targetPosition)
+    // Updated sequence signature accepting tracking weight parameters
+    private IEnumerator ExecuteThrowSequence(Vector3 targetPosition, float chargePercent)
     {
-        isPickingUp = true; 
+        isPickingUp = true;
         if (interaction_info_ui != null) interaction_info_ui.SetActive(false);
         if (playerMovementScript != null) playerMovementScript.isLocked = true;
 
         if (playerMovementScript != null)
         {
             Vector3 faceDirection = (targetPosition - playerMovementScript.transform.position);
-            faceDirection.y = 0; 
+            faceDirection.y = 0;
             if (faceDirection.sqrMagnitude > 0.01f)
             {
                 playerMovementScript.transform.rotation = Quaternion.LookRotation(faceDirection);
@@ -210,7 +268,7 @@ public class SelectionManager : MonoBehaviour
             playerAnimator.SetTrigger("Throw");
         }
 
-        yield return new WaitForSeconds(0.35f); 
+        yield return new WaitForSeconds(0.35f);
 
         if (bagContainerSource != null && playerInventory != null && playerInventory.activeEquippedItem != null)
         {
@@ -222,14 +280,15 @@ public class SelectionManager : MonoBehaviour
                 flyingProjectile.transform.localScale = activeData.itemPrefab.transform.localScale;
 
                 StoneProjectile projectile = flyingProjectile.AddComponent<StoneProjectile>();
-                projectile.LaunchAtPosition(targetPosition, activeData);
+                // Pass the charge variable down to setup calculations
+                projectile.LaunchAtPosition(targetPosition, activeData, chargePercent);
             }
 
             var equipment = playerMovementScript.GetComponent<PlayerEquipment>() ?? playerMovementScript.GetComponentInChildren<PlayerEquipment>();
             if (equipment != null) equipment.ClearBagStorage();
 
             playerInventory.AddToInventory(activeData.itemName, -1);
-            
+
             int remainingQuantity = playerInventory.GetItemCount(activeData.itemName);
 
             if (remainingQuantity > 0)
@@ -242,7 +301,7 @@ public class SelectionManager : MonoBehaviour
             }
         }
 
-        yield return new WaitForSeconds(0.25f); 
+        yield return new WaitForSeconds(0.25f);
 
         if (playerMovementScript != null) playerMovementScript.isLocked = false;
         isPickingUp = false;
@@ -291,18 +350,15 @@ public class SelectionManager : MonoBehaviour
             {
                 playerAnimator.SetBool("isMoving", false);
                 playerAnimator.SetBool("isStopped", true);
-                
-                // Clear any structural floats keeping your walk tree active
                 playerAnimator.SetFloat("Speed", 0f);
                 playerAnimator.SetTrigger("PickUp");
             }
 
-            // Let the animation complete bending down
             yield return new WaitForSeconds(0.45f);
 
             Vector3 originalScale = target != null ? target.transform.localScale : Vector3.zero;
             float elapsed = 0f;
-            float duration = 0.4f; 
+            float duration = 0.4f;
 
             while (elapsed < duration)
             {
