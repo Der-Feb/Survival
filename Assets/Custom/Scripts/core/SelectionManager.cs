@@ -14,22 +14,23 @@ public class SelectionManager : MonoBehaviour
     public InventoryManager playerInventory;
     public Animator playerAnimator;
 
-    [Header("Combat & Bag Configuration")]
-    public Transform bagContainerSource;
+    [Header("Combat & Equipment Configuration")]
+    public Transform activeHandPreviewSource; // Hand preview anchor point
 
-    [Header("Vision Configuration")]
+    [Header("Vision & Whisker System")]
     public Transform playerEyeAnchor;
+    [SerializeField] private float whiskerSpread = 0.15f; // Distance offset of side rays from center
+    [SerializeField] private float whiskerLength = 40f;   // Maximum distance for checks
 
     [Header("Throw Charge Settings")]
     [SerializeField] private float minThrowDistance = 5f;
     [SerializeField] private float maxThrowDistance = 40f;
-    [SerializeField] private float maxChargeTime = 1.5f; // Max strength reached at 1.5 seconds
+    [SerializeField] private float maxChargeTime = 1.5f;
 
     private PlayerMovement playerMovementScript;
     private bool isPickingUp = false;
     private VillainUIController currentFocusedTigerUI;
 
-    // Charge Tracking Flags
     private float enterPressStartTime;
     private bool isChargingThrow = false;
 
@@ -68,34 +69,67 @@ public class SelectionManager : MonoBehaviour
         bool hasActiveItemEquipped = playerInventory != null && playerInventory.activeEquippedItem != null;
         bool isCurrentlyFocusing = focusScript != null && focusScript.isFocusing;
 
-        // 🎯 TARGETING MATRIX
-        Ray ray;
+        // 🎯 TARGETING MATRIX: 5-Ray Antenna Whiskers
+        Ray centerRay;
         if (isCurrentlyFocusing)
         {
-            ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            centerRay = Camera.main.ScreenPointToRay(Input.mousePosition);
         }
         else if (playerEyeAnchor != null)
         {
-            ray = new Ray(playerEyeAnchor.position, playerEyeAnchor.forward);
+            centerRay = new Ray(playerEyeAnchor.position, playerEyeAnchor.forward);
         }
         else
         {
-            ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            centerRay = Camera.main.ScreenPointToRay(Input.mousePosition);
+        }
+
+        Vector3 rightOffset = Camera.main.transform.right * whiskerSpread;
+        Vector3 upOffset = Camera.main.transform.up * whiskerSpread;
+
+        Ray topLeftWhisker = new Ray(centerRay.origin - rightOffset + upOffset, centerRay.direction);
+        Ray topRightWhisker = new Ray(centerRay.origin + rightOffset + upOffset, centerRay.direction);
+        Ray bottomLeftWhisker = new Ray(centerRay.origin - rightOffset - upOffset, centerRay.direction);
+        Ray bottomRightWhisker = new Ray(centerRay.origin + rightOffset - upOffset, centerRay.direction);
+
+        RaycastHit hit;
+        bool hitFound = false;
+
+        // Priority 1: Main Center Ray
+        if (Physics.Raycast(centerRay, out hit, whiskerLength))
+        {
+            hitFound = true;
+        }
+        // Priority 2: Whisker Boundary Fallback
+        else
+        {
+            Ray[] whiskers = { topLeftWhisker, topRightWhisker, bottomLeftWhisker, bottomRightWhisker };
+            foreach (Ray whisker in whiskers)
+            {
+                if (Physics.Raycast(whisker, out RaycastHit whiskerHit, whiskerLength))
+                {
+                    if (whiskerHit.transform.GetComponentInParent<Villain_AI_Controller>() != null ||
+                        whiskerHit.transform.GetComponentInParent<InteractableObject>() != null)
+                    {
+                        hit = whiskerHit;
+                        hitFound = true;
+                        break;
+                    }
+                }
+            }
         }
 
         // ========================================================
-        // 🔋 CHARGE DETECTION LOOP (COMBAT TRACKING)
+        // CHARGE DETECTION LOOP
         // ========================================================
         if (hasActiveItemEquipped)
         {
-            // 1. Initial Press Down: Start charging
             if (Input.GetKeyDown(KeyCode.Return))
             {
                 enterPressStartTime = Time.time;
                 isChargingThrow = true;
             }
 
-            // 2. Continuous Holding: Update UI / Visual calculations
             if (isChargingThrow && Input.GetKey(KeyCode.Return))
             {
                 float holdDuration = Time.time - enterPressStartTime;
@@ -104,12 +138,11 @@ public class SelectionManager : MonoBehaviour
 
                 if (interaction_text != null)
                 {
-                    interaction_text.text = $"{playerInventory.activeEquippedItem.itemName}\n<color=orange>Charging: {chargeRatio * 100f:F0}%</color>\nDistance: {currentThrowDistance:F1}m";
+                    interaction_text.text = $"{playerInventory.activeEquippedItem.itemName}\n<color=orange>Power: {chargeRatio * 100f:F0}%</color>\nRange: {currentThrowDistance:F1}m";
                     if (interaction_info_ui != null) interaction_info_ui.SetActive(true);
                 }
             }
 
-            // 3. Release Key: Execute calculated throw calculations
             if (isChargingThrow && Input.GetKeyUp(KeyCode.Return))
             {
                 isChargingThrow = false;
@@ -117,26 +150,14 @@ public class SelectionManager : MonoBehaviour
                 float finalChargeRatio = Mathf.Clamp01(totalHoldTime / maxChargeTime);
 
                 Vector3 targetPoint;
-
-                // Handle combat target override if focusing directly on an enemy element
-                RaycastHit targetHit;
-                if (Physics.Raycast(ray, out targetHit, maxThrowDistance) &&
-                    (targetHit.transform.GetComponent<Villain_AI_Controller>() != null || targetHit.transform.GetComponentInParent<Villain_AI_Controller>() != null))
+                if (hitFound)
                 {
-                    // Locked targeted tracking throw
-                    targetPoint = targetHit.point;
+                    targetPoint = hit.point;
                 }
                 else
                 {
-                    // Blind free-throw calculation scaled entirely on charge values
                     float calculatedDistance = Mathf.Lerp(minThrowDistance, maxThrowDistance, finalChargeRatio);
-                    targetPoint = ray.origin + (ray.direction * calculatedDistance);
-
-                    // Drop point down to floor collision terrain if ray hits intermediate obstacles
-                    if (Physics.Raycast(ray, out RaycastHit blindHit, calculatedDistance))
-                    {
-                        targetPoint = blindHit.point;
-                    }
+                    targetPoint = centerRay.origin + (centerRay.direction * calculatedDistance);
                 }
 
                 StartCoroutine(ExecuteThrowSequence(targetPoint, finalChargeRatio));
@@ -144,7 +165,6 @@ public class SelectionManager : MonoBehaviour
             }
         }
 
-        // Stop processing layout if running blind throws
         if (isChargingThrow) return;
 
         if (!isCurrentlyFocusing)
@@ -154,8 +174,7 @@ public class SelectionManager : MonoBehaviour
             return;
         }
 
-        RaycastHit hit;
-        if (Physics.Raycast(ray, out hit))
+        if (hitFound)
         {
             var selectionTransform = hit.transform;
 
@@ -168,7 +187,6 @@ public class SelectionManager : MonoBehaviour
                 {
                     currentFocusedTigerUI.SetHealthBarVisible(false);
                 }
-
                 currentFocusedTigerUI = tigerUI;
                 currentFocusedTigerUI.SetHealthBarVisible(true);
             }
@@ -246,7 +264,6 @@ public class SelectionManager : MonoBehaviour
         interaction_info_ui.SetActive(state);
     }
 
-    // Updated sequence signature accepting tracking weight parameters
     private IEnumerator ExecuteThrowSequence(Vector3 targetPosition, float chargePercent)
     {
         isPickingUp = true;
@@ -270,25 +287,37 @@ public class SelectionManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.35f);
 
-        if (bagContainerSource != null && playerInventory != null && playerInventory.activeEquippedItem != null)
+        if (playerInventory != null && playerInventory.activeEquippedItem != null)
         {
             ItemData activeData = playerInventory.activeEquippedItem;
 
+            // 🛑 UNDERFLOW DEFENSE: Stops stock counts from dipping below zero
+            int currentStock = playerInventory.GetItemCount(activeData.itemName);
+            if (currentStock <= 0)
+            {
+                playerInventory.activeEquippedItem = null;
+                isPickingUp = false;
+                if (playerMovementScript != null) playerMovementScript.isLocked = false;
+                yield break;
+            }
+
+            // Spawn directly from active hand preview anchor source frame point
+            Vector3 spawnPosition = activeHandPreviewSource != null ? activeHandPreviewSource.position : playerMovementScript.transform.position + Vector3.up * 1.2f;
+
             if (activeData.itemPrefab != null)
             {
-                GameObject flyingProjectile = Instantiate(activeData.itemPrefab, bagContainerSource.position, Quaternion.identity);
+                GameObject flyingProjectile = Instantiate(activeData.itemPrefab, spawnPosition, Quaternion.identity);
                 flyingProjectile.transform.localScale = activeData.itemPrefab.transform.localScale;
 
                 StoneProjectile projectile = flyingProjectile.AddComponent<StoneProjectile>();
-                // Pass the charge variable down to setup calculations
-                projectile.LaunchAtPosition(targetPosition, activeData, chargePercent);
+                projectile.LaunchAtPosition(spawnPosition, targetPosition, activeData, chargePercent);
             }
 
             var equipment = playerMovementScript.GetComponent<PlayerEquipment>() ?? playerMovementScript.GetComponentInChildren<PlayerEquipment>();
             if (equipment != null) equipment.ClearBagStorage();
 
+            // Safe subtraction deduction commit
             playerInventory.AddToInventory(activeData.itemName, -1);
-
             int remainingQuantity = playerInventory.GetItemCount(activeData.itemName);
 
             if (remainingQuantity > 0)
