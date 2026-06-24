@@ -31,7 +31,6 @@ UserSettings/
 *.com.unity.ide.vscode/
 .vs/
 .idea/
-.vscode/
 
 # --- OS Specifics ---
 .DS_Store
@@ -59,3 +58,5 @@ crashlytics-build.properties
 
 !/Assets/Rabbits/Scripts/
 !/Assets/Tiger/Scripts
+config.bat
+node_modules
