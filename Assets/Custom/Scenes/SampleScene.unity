@@ -1110,7 +1110,7 @@ Transform:
   m_GameObject: {fileID: 199176590}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.6688143, z: -0, w: 0.7434295}
-  m_LocalPosition: {x: 725.35, y: 2.02, z: 342.79}
+  m_LocalPosition: {x: 725.99, y: 1.98, z: 337.98}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2498,7 +2498,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &463725946
 Transform:
   m_ObjectHideFlags: 0
@@ -2529,7 +2529,7 @@ MonoBehaviour:
   villainPrefab: {fileID: 1103019080430449189, guid: d9efb55b9e093db4db070395338d791b, type: 3}
   villainTag: Tiger
   spawnPoints:
-  - {fileID: 844746751}
+  - {fileID: 463725946}
   maxActiveVillains: 1
   spawnInterval: 5
 --- !u!4 &476116007 stripped
@@ -5686,8 +5686,13 @@ MonoBehaviour:
   focusScript: {fileID: 330585549}
   playerInventory: {fileID: 199176594}
   playerAnimator: {fileID: 973104862}
-  bagContainerSource: {fileID: 1846953796}
+  activeHandPreviewSource: {fileID: 0}
   playerEyeAnchor: {fileID: 485346635}
+  whiskerSpread: 0.15
+  whiskerLength: 40
+  minThrowDistance: 5
+  maxThrowDistance: 40
+  maxChargeTime: 1.5
 --- !u!4 &1101412635
 Transform:
   m_ObjectHideFlags: 0
